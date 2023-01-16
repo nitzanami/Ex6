@@ -1,6 +1,6 @@
 public class VariableAttributes {
-    VariableType type;
-    boolean isFinal;
+    private final VariableType type;
+    private final boolean isFinal;
     public VariableAttributes(VariableType type, boolean isFinal ){
         this.type = type;
         this.isFinal = isFinal;
@@ -11,5 +11,4 @@ public class VariableAttributes {
     public boolean isFinal(){
         return isFinal;
     }
-
 }
