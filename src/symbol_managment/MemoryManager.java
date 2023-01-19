@@ -11,12 +11,13 @@ import java.util.HashMap;
 
 
 public class MemoryManager {
-    ArrayList<HashMap<String, String>> memoryScopes;
+    private ArrayList<HashMap<String, VariableAttribute>> memoryScopes;
     
     public MemoryManager() {
         memoryScopes = new ArrayList<>();
+        // adds the global scope as empty:
+        memoryScopes.add(new HashMap<>());
     }
-    
     /**
      * check if an item is familiar in the scope.
      * used in case of using a variable - and answer the query of what type it is.
@@ -24,24 +25,14 @@ public class MemoryManager {
      * @param x the item searched for
      * @return in case it is, return its type.
      *         else returns NULL;
-     *
-     *
-     * example:
-     *      "FI" - final int
-     *      "U"  - wasn't initiated
-     *      "D" - double
-     *      "f" - float
-     *      "b" - boolean
-     *      "c" - char
      */
-    public String inScope(String x) {
+    public VariableAttribute inScope(String x) {
         for (HashMap h : memoryScopes) {
-            for (String s : memoryScopes.get(memoryScopes.size() - 1).values())
-                if (s.equals(x)) return s;
+            for (VariableAttribute var : memoryScopes.get(memoryScopes.size() - 1).values())
+                if (var.equals(x)) return var;
         }
         return null;
     }
-    
     /**
      * return true if x named variable is not declared in the outer scope of this memory manager.
      *
@@ -49,11 +40,14 @@ public class MemoryManager {
      * @return true if x named variable is not declared in the outer scope.
      */
     public boolean declareable(String x) {
-        for (String s : (memoryScopes.get(memoryScopes.size() - 1).values()))
-            if (s.equals(x)) return false;
+        for (VariableAttribute var : (memoryScopes.get(memoryScopes.size() - 1).values()))
+            if (var.getName().equals(x)) return false;
         return true;
     }
-    
+    /**
+     * @return true if ArrayList hold another scope, that's not the global one.
+     */
+    public boolean isOuterScope(){return 1 < memoryScopes.size();}
     
 }
 

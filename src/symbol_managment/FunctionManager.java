@@ -1,11 +1,11 @@
-package s_java.symbol_managment;
+package symbol_managment;
 
-import s_java.variable.*;
-
+import java.util.HashMap;
 import java.util.List;
 
 public class FunctionManager {
-
+    private HashMap<String,List<VarType>> functionToInputMapping;
+    
     public List<VariableType> getParameterTypes(){
         return null;
     }

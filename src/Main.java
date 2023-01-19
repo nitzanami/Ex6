@@ -11,7 +11,10 @@ import java.util.InputMismatchException;
 import java.util.function.Predicate;
     
     public class Main {
+        // todo read file twice -> first time, remove comment line(start with //), remove empty
+        //  lines, save functions and globals
         
+        // todo the second time - ignore outer scope? and
         public static void main(String[] args) {
             if(args.length != 2) throw new InputMismatchException("Wrong number of parameters");
             try(BufferedReader br = new BufferedReader(new FileReader(args[1]))) {
