@@ -16,8 +16,19 @@ public class LineProcessor {
     MemoryManager memoryManager;
     FunctionManager functionManager;
     
-    // in outer scope only global declarations and methods are allowed.
-    private boolean outerScope;
+    // regex for pattern:
+    // empty lines, and a function that find empty lines and returns true
+    String emptyLineRegex = "^\\s*$";
+    
+    // regex for the !!!start!!! of if/while statmente.
+    String StartOfWhileOrIfRegex = "^(while|if)\\s*\\(";
+    
+    // regex for the !!!start!!! of declaration statement.
+    String startOfFunctionDeclarationRegex = "^void \\w(\\w|W)*\\(";
+    
+    // function call, a function that calls FunctionManager.isFunctionLegit(String FunName, List<VarType>)
+    String startOfFunctionRegex = "";
+    // function decleration,
     
     public LineProcessor(){
         memoryManager = new MemoryManager();
@@ -26,10 +37,9 @@ public class LineProcessor {
     
     public void procesLine(String line) {
         return isEmpty(line) ||
-                isDecleration(line) ||
-                memoryManager.isIfOrWhile(line) ||
-                functionCall(line) ||
-                functionDecleration(line);
+                (proccessIfOrWhile(line) && memoryManager.getScopeDepth()>1) ||
+                proccessfunctionCall(line) ||
+                (proccessfunctionDecleration(line) && memoryManager.getScopeDepth() == 1);
     }
-    Predicate<String> isEmpty = (String line) -> (if(String.splite(line)));
+    Predicate<String> isEmpty = (String line) -> ;
 }

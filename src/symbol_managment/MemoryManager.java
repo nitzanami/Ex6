@@ -49,5 +49,6 @@ public class MemoryManager {
      */
     public boolean isOuterScope(){return 1 < memoryScopes.size();}
     
+    public int getScopeDepth(){return memoryScopes.size();}
 }
 
