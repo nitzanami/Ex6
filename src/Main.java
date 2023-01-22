@@ -22,7 +22,7 @@ public class Main {
                     S_JavaStatus = '1'; // for illegal code
             }
             
-        } catch (IOException e) { // todo check which exception is needed to be thrown away.
+        } catch (IOException | SyntaxException e) { // todo check which exception is needed to be thrown away.
             e.printStackTrace();
         } finally {
             System.out.println(S_JavaStatus);

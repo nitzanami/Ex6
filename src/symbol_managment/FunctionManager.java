@@ -6,6 +6,9 @@ import java.util.List;
 public class FunctionManager {
     private HashMap<String, List<VarType>> functionToInputMapping;
     
+    public FunctionManager(){
+        functionToInputMapping = new HashMap<>();
+    }
     /**
      * return the parameters for a given function
      * @param functionName the function name
