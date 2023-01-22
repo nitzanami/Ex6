@@ -2,44 +2,42 @@ import symbol_managment.FunctionManager;
 import symbol_managment.MemoryManager;
 
 import java.util.function.Predicate;
-import java.util.function.Predicate;
-import java.util.regex.*;
 
 /**
  * java line i one of those:
- *      empty line - only spaces. \s regex.
- *
- *
+ * empty line - only spaces. \s regex.
  */
 
-public class LineProcessor {
+class LineProcessor {
+    // a predicate that handles empty lines
+    private final Predicate<String> isEmptyLine = (String line) ->
+    {
+        String l = line.replaceAll("\\s", "");
+        return l.length() == 0;
+    };
+    // a regex that identifies a declaration of global variable
+    private final Predicate<String> startOfVariable = (String line) -> {
+        // todo make pattern for begining of variable decleration
+        // todo make matcher for that pattern
+        // todo stop after final or vartype, remomber each of them and add to memoryManager
+        return false;
+    };
+    
     MemoryManager memoryManager;
     FunctionManager functionManager;
     
-    // regex for pattern:
-    // empty lines, and a function that find empty lines and returns true
-    String emptyLineRegex = "^\\s*$";
     
-    // regex for the !!!start!!! of if/while statmente.
-    String StartOfWhileOrIfRegex = "^(while|if)\\s*\\(";
-    
-    // regex for the !!!start!!! of declaration statement.
-    String startOfFunctionDeclarationRegex = "^void \\w(\\w|W)*\\(";
-    
-    // function call, a function that calls FunctionManager.isFunctionLegit(String FunName, List<VarType>)
-    String startOfFunctionRegex = "";
-    // function decleration,
-    
-    public LineProcessor(){
+    public LineProcessor() {
         memoryManager = new MemoryManager();
         functionManager = new FunctionManager();
     }
     
-    public void procesLine(String line) {
-        return isEmpty(line) ||
-                (proccessIfOrWhile(line) && memoryManager.getScopeDepth()>1) ||
-                proccessfunctionCall(line) ||
-                (proccessfunctionDecleration(line) && memoryManager.getScopeDepth() == 1);
+    // programing in stages:
+    // first is ignoring empty lines:
+    public boolean processLineFirstIteration(String line) {
+        return isEmptyLine.test(line); // for successful completion
     }
-    Predicate<String> isEmpty = (String line) -> ;
+    
 }
+    
+
