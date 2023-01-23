@@ -22,4 +22,12 @@ public enum VarType {
             }
         throw new IllegalTypeException("Type " + name + "is not a valid type");
     }
+    
+    /**
+     * hold all the acceptable variables
+     * @return the regec for the variables
+     */
+    public static String geVarTypesRegex(){
+        return "(int|String|boolean|char|double)";
+    }
 }
