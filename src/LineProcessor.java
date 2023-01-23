@@ -132,7 +132,7 @@ class LineProcessor {
         }
 
         // make sure that the declaration ends with '}'
-        if (!params[params.length - 1].equals("{"))
+        if (!params[params.length - 1].strip().equals("{"))
             throw new SyntaxException("s_java function declaration must end with }");
 
         // add this function to the list of legit functions
