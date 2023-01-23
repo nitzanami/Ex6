@@ -161,9 +161,10 @@ class LineProcessor {
         String WhileIfRegex = "^\\s*(while|if)\\s*\\((.*)\\)\\s*\\{\\s*$";
         Matcher matcher = Pattern.compile(WhileIfRegex).matcher(line);
         if (!matcher.find() || matcher.group(1) == null) return false;
-        varifyBoolean(matcher.group(2)); // TODO func that verifies that the expression is boolean
+//        varifyBoolean(matcher.group(2)); // TODO func that verifies that the expression is boolean
         
-        nextLineMustNotBeEmpty = true;
+        memoryManager.increaseScopeDepth(); // upon entering a new scope.
+        nextLineMustNotBeEmpty = true;  // after { the next line must not be empty
         return true;
     }
 }
