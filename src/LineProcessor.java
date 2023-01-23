@@ -24,12 +24,7 @@ class LineProcessor {
     };
     private final String VAR_REGEX_EXPRESSION = "([a-zA-Z][a-zA-Z0-9_]*|_[a-zA-Z0-9_]+)";
     // a regex that identifies a declaration of global variable
-    private final Predicate<String> startOfVariable = (String line) -> {
-        // todo make pattern for begining of variable decleration
-        // todo make matcher for that pattern
-        // todo stop after final or vartype, remomber each of them and add to memoryManager
-        return false;
-    };
+
     MemoryManager memoryManager;
     FunctionManager functionManager;
     private boolean nextLineMustNotBeEmpty;
