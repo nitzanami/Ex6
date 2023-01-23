@@ -64,5 +64,19 @@ public class MemoryManager {
             memoryScopes.get(memoryScopes.size() - 1).put(variableName, var);
         }
     }
+    
+    /**
+     * add depth to the memoryScope.
+     * it means that we entered a new scope,
+     * in the 1st version: while,if, or a function.
+     */
+    public void increaseScopeDepth(){memoryScopes.add(new HashMap<>());}
+    
+    /**
+     * decrease depth from the memoryScope.
+     * it means that we exited the current scope,
+     * in the 1st version: while,if, or a function just ended with a '}' sign.
+     */
+    public void decreaseScopeDepth(){memoryScopes.remove(memoryScopes.size()-1);}
 }
 
