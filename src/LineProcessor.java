@@ -35,6 +35,14 @@ class LineProcessor {
         String l = line.replaceAll("\\s", "");
         return l.length() == 0;
     }
+    private static boolean isCommentLine(String line) throws SyntaxException {
+        Matcher m = Pattern.compile("//").matcher(line);
+        if(!m.find()) return false;
+        if(!line.split("//")[0].equals(""))
+            throw new SyntaxException(
+                    String.format("Commant must be a full line,Error in line:\"%s\"", line));
+        return true;
+    }
     
     public static void main(String[] args) {
         LineProcessor l = new LineProcessor();
@@ -227,6 +235,7 @@ class LineProcessor {
         boolean functionDecleration = isFuncDecLegit(line);
         boolean isVariableDecleration = isVarDecLineLegit(line, this::addGlobalVariable);
         return emptyLineIsLegit
+                || isCommentLine(line)
                 || functionDecleration
                 || isVariableDecleration;
     }
@@ -242,7 +251,7 @@ class LineProcessor {
     public boolean processLineSecondIteration(String line) throws SyntaxException {
 //        boolean isWhileOrIfChunck = !memoryManager.isOuterScope() && isWhileOrIf(line);
         boolean isWhileOrIfChunck = isWhileOrIf(line);
-        return isWhileOrIfChunck;
+        return isWhileOrIfChunck || isCommentLine(line);
     }
     
     private void addGlobalVariable(String name, VariableAttribute variableAttribute) {
