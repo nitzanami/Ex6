@@ -52,27 +52,18 @@ class LineProcessor {
      * @param s the input string
      * @return true if boolean expression- otherwise false
      */
-    private static boolean varifyBoolean(String s) {  // TODO func that verifies that the expression is boolean
-        //splits into
-        String boolLegitValueExpression =
-                ("\\s*(" +
-                        BOOLEAN_REGEX_EXPRESSION + "|" +
-                        DOUBLE_REGEX_EXPRESSION + "|" +
-                        VAR_REGEX_EXPRESSION + ")" +
-                        "(\\s+&&|\\|\\|\\s*(" +
-                        BOOLEAN_REGEX_EXPRESSION + "|" +
-                        DOUBLE_REGEX_EXPRESSION + "|" +
-                        VAR_REGEX_EXPRESSION + "))*");
+    private boolean varifyBoolean(String s) {
+        String boolExpression = "^\\s*(true|false|[+-]*[0-9]+\\.[0-9]*|\\w[\\w\\d_]*|_[\\w\\d_]+)" +
+                "(\\s*(&&|\\|\\|)\\s*.*)$";
         // with groups:0-all, 1-one of *_REGEX_EXPRESSION, 2-&& or || following by REGEX_EXPRESSION unlimited times
-        Matcher m = Pattern.compile(boolLegitValueExpression).matcher(s);
+        Matcher m = Pattern.compile(boolExpression).matcher(s);
         if (!m.find()) return false;
-        String first = m.group(1).strip(); // todo need to make sure its not reserved_word, make
-        InputValueIsBoolean(first);
+        InputValueIsBoolean(m.group(1));
         // sure that if its var, its of bool/int/double and is
-        if (m.group(5) == null) return true;
-        String[] expressions = m.group(5).strip().split("&&|(\\|\\|)");
-        for (int i = 0; i < expressions.length; i++)
-            InputValueIsBoolean(expressions[i]);
+        if (m.group(2) == null) return true;
+        String[] expressions = m.group(2).strip().split("(&&|\\|\\|)");
+        for (int i = 1; i < expressions.length; i++)
+            if(!InputValueIsBoolean(expressions[i].strip())) return false;
         return true;
     }
     
