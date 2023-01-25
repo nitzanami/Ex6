@@ -82,12 +82,18 @@ class LineProcessor {
      * @param expression input
      * @return true/false
      */
-    private static boolean InputValueIsBoolean(String expression) {
+    private boolean InputValueIsBoolean(String expression) {
         expression = expression.strip();
-        if (expression.equals("true") || expression.equals("false"))
+        // if its either true/false strings or a double/int number literal - accept
+        if (expression.equals("true") || expression.equals("false") || stringIsNumber(expression))
             return true;
-        
-        return true;
+        // if it's an initiated variable with boolean meaning variable - accept
+        var variable = memoryManager.getVarAttributes(expression);
+        if(variable==null || !variable.getInitiated()) return false;
+        if(variable.getVariableType()==VarType.BOOLEAN || variable.getVariableType()==VarType.INT ||
+                variable.getVariableType()==VarType.DOUBLE)
+            return true;
+        return false;
     }
     
     private static boolean isKeyword(String varName) {
@@ -316,6 +322,14 @@ class LineProcessor {
         memoryManager.increaseScopeDepth(); // upon entering a new scope.
         nextLineMustNotBeEmpty = true;  // after { the next line must not be empty
         return true;
+    }
+    
+
+    private static boolean stringIsNumber(String str){
+        Matcher m = NUMBER_PATTERN.matcher(str);
+        if(m.find())
+            return true;
+        return false;
     }
 }
     
