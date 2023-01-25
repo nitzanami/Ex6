@@ -1,10 +1,8 @@
 import symbol_managment.*;
 
-import javax.lang.model.type.UnknownTypeException;
 import java.util.ArrayList;
-import java.util.Locale;
 import java.util.function.BiConsumer;
-import java.util.function.Predicate;
+import java.util.HashSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -55,7 +53,7 @@ class LineProcessor {
      * @param s the input string
      * @return true if boolean expression- otherwise false
      */
-    private static boolean varifyBoolean(String s) {
+    private static boolean varifyBoolean(String s) {  // TODO func that verifies that the expression is boolean
         //splits into
         String boolLegitValueExpression =
                 ("\\s*(" +
@@ -70,13 +68,12 @@ class LineProcessor {
         Matcher m = Pattern.compile(boolLegitValueExpression).matcher(s);
         if (!m.find()) return false;
         String first = m.group(1).strip(); // todo need to make sure its not reserved_word, make
-        varifyExpressionIsBoolean(first);
+        InputValueIsBoolean(first);
         // sure that if its var, its of bool/int/double and is
         if (m.group(5) == null) return true;
         String[] expressions = m.group(5).strip().split("&&|(\\|\\|)");
         for (int i = 0; i < expressions.length; i++)
-            varifyExpressionIsBoolean(expressions[i]);
-        
+            InputValueIsBoolean(expressions[i]);
         return true;
     }
     
@@ -86,10 +83,11 @@ class LineProcessor {
      * @param expression input
      * @return true/false
      */
-    private static boolean varifyExpressionIsBoolean(String expression) {
+    private static boolean InputValueIsBoolean(String expression) {
         expression = expression.strip();
         if (expression.equals("true") || expression.equals("false"))
             return true;
+        
         return true;
     }
 
@@ -307,8 +305,7 @@ class LineProcessor {
         String WhileIfRegex = "^\\s*(while|if)\\s*\\((.*)\\)\\s*\\{\\s*$";
         Matcher matcher = Pattern.compile(WhileIfRegex).matcher(line);
         if (!matcher.find() || matcher.group(1) == null) return false;
-        varifyBoolean(matcher.group(2).strip()); // TODO func that verifies that the expression is boolean
-        
+        varifyBoolean(matcher.group(2).strip());
         memoryManager.increaseScopeDepth(); // upon entering a new scope.
         nextLineMustNotBeEmpty = true;  // after { the next line must not be empty
         return true;
