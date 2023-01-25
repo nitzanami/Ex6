@@ -5,9 +5,7 @@ import java.util.ArrayList;
 import java.util.InputMismatchException;
 
 public class Main {
-    // todo read file twice -> first time, remove comment line(start with //), remove empty
-    //  lines, save functions and globals
-    // todo the second time - ignore outer scope? and
+    // todo check right return values
     public static void main(String[] args) {
         char S_JavaStatus = '0';
         if (args.length != 1) {
