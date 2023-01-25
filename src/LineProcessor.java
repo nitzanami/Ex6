@@ -1,10 +1,8 @@
-import symbol_managment.FunctionManager;
-import symbol_managment.MemoryManager;
-import symbol_managment.VarType;
-import symbol_managment.VariableAttribute;
+import symbol_managment.*;
 
+import javax.lang.model.type.UnknownTypeException;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Locale;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -17,17 +15,18 @@ import java.util.regex.Pattern;
 
 class LineProcessor {
     // a predicate that handles empty lines
-    private static final Predicate<String> isEmptyLine = (String line) ->
-    {
+
+    private static boolean isEmptyLine(String line) {
         String l = line.replaceAll("\\s", "");
         return l.length() == 0;
     };
-    private static final String VAR_REGEX_EXPRESSION = "(\\s*[a-zA-Z][a-zA-Z0-9_]*|_[a-zA-Z0-9_]+\\s*)";
-    private static final String DOUBLE_REGEX_EXPRESSION = "(\\s*(\\+|\\-)?[0-9]+(\\.(0-9)*)?\\s*)";
-    private static final String INT_REGEX_EXPRESSION = "(\\s*(\\+|\\-)?[0-9]+)\\s*";
-    private static final String BOOLEAN_REGEX_EXPRESSION = "(\\s*(true|false)?\\s*)";
-    private static final String RESEREVED_WORD =
+    private final static String VAR_REGEX_EXPRESSION = "([a-zA-Z][a-zA-Z0-9_]*|_[a-zA-Z0-9_]+)";
+    private final static String DOUBLE_REGEX_EXPRESSION = "(\\s*(\\+|\\-)?[0-9]+(\\.(0-9)*)?\\s*)";
+    private final static String INT_REGEX_EXPRESSION = "(\\s*(\\+|\\-)?[0-9]+)\\s*";
+    private final static String BOOLEAN_REGEX_EXPRESSION = "(\\s*(true|false)?\\s*)";
+    private final static String RESEREVED_WORD =
             ("(if|while|true|false|final|return|void|int|char|boolean|double|String)");
+    private final static String[] keywords = {"while", "if", "final", "void","true","false"};
     
     MemoryManager memoryManager;
     FunctionManager functionManager;
@@ -37,6 +36,17 @@ class LineProcessor {
         memoryManager = new MemoryManager();
         functionManager = new FunctionManager();
         nextLineMustNotBeEmpty = true;
+    }
+    
+    public static void main(String[] args) {
+        LineProcessor l = new LineProcessor();
+        try {
+            System.out.println(l.isVarDecLineLegit("final    double true  , gba, asf;", (x, y) -> {
+            }));
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
     
     /**
@@ -82,42 +92,136 @@ class LineProcessor {
             return true;
         return true;
     }
-    
-    private boolean isVarDec(String line, BiConsumer<String, VariableAttribute> onVariableDeclare) {
-        String types = VarType.geVarTypesRegex();
-        String identifier = VAR_REGEX_EXPRESSION;
-        //String typeAndIdentifier = types + "\\s+" + identifier + "\\s*";
-        //String varDecRegex = "\\s*(final\\s+)?"+ typeAndIdentifier + "(,\\s*" + typeAndIdentifier + ")*;";
-        Matcher m = Pattern.compile("^\\s*(final\\s+)?(\\b\\S*\\b)(.*?);\\s*$").matcher(line);
+
+    /**
+     * check if the given line is in the format for a variable declaration, and if it is, declare the variables
+     *
+     * @param line              The line to parse.
+     * @param onVariableDeclare a function that decides what to do with a valid variable declaration.
+     * @return true if the line is a variable declaration line, else false.
+     */
+    private boolean isVarDecLineLegit(String line, BiConsumer<String, VariableAttribute> onVariableDeclare) {
+        Matcher m = Pattern.compile("(.*);\\s*$").matcher(line);
+        if (!m.find())
+            throw new MissingSemicolonException();
+        //pattern for checking
+        return isVarDecLegit(line.replaceFirst(";", ""), onVariableDeclare);
+    }
+
+    /**
+     * check if the given declaration is a valid declaration of a variable list, and if it is, declare the variables.
+     * doesnt excpect a semicolon at the end of the input.
+     *
+     * @param declaration       the variable declaration to parse.
+     * @param onVariableDeclare a function that decides what to do with a valid variable declaration.
+     * @return true if the decleration is valid, else false.
+     */
+    private boolean isVarDecLegit(String declaration, BiConsumer<String, VariableAttribute> onVariableDeclare) {
+        //check if the line start with final
+        Matcher m = Pattern.compile("^\\s*(final\\s+)?(\\b\\S*\\b)(.*?)$").matcher(declaration);
         if (!m.find())
             return false;
         boolean isFinal = m.group(1) != null;
+        //get the type of the variables in the declaration.
         String type = m.group(2);
-        String varString = m.group(3);
-        String[] vars = varString.split(",");
-        for (String var : vars) {
-            var = var.strip();
-            m = Pattern.compile("^" + identifier + "\\s*((=)(.*))?$").matcher(var);
-            if (!m.find())
-                throw new IllegalVarDecException("Invalid variable identifier or initialization: " + var);
-            
-            String varName = m.group(1).strip();
-            String value = m.group(4);
-            VariableAttribute variableAttribute;
-            VarType varType = VarType.getVarType(type);
-            variableAttribute = new VariableAttribute(varName, isFinal, varType,/*isLegalValueForType(value, varType)*/false);
-            //todo make a function that checks this
+        VarType varType = VarType.getVarType(type);
+
+        //separate the declaration into individual variables
+        String[] vars = m.group(3).split(",");
+        for (String varDec : vars) {
+            varDec = varDec.strip();
+            String varName = getVariableName(varDec);
+            if (isKeyword(varName))
+                throw new IllegalVarDecException("The name " + varName +
+                        " is a keyword and cant be used for a variable name");
+            //check if the variable should start as initialized
+            String initialize = varDec.replaceFirst(varName, "");
+            boolean isInitialized = isVarInitialized(varType, initialize);
+            //handle the variable declaration according to the OnVariableDeclare function.
+            VariableAttribute variableAttribute = new VariableAttribute(varName, isFinal, varType, isInitialized);
             onVariableDeclare.accept(varName, variableAttribute);
         }
         return true;
     }
-    
+
+    private static boolean isKeyword(String varName) {
+        try {
+            VarType.getVarType(varName);
+            return true;
+        } catch (Exception ignored) {
+        }
+
+        for (String keyword : keywords) {
+            if (varName.equals(keyword))
+                return true;
+        }
+        return false;
+    }
+
+
+    /**
+     * gets a variable initialization in the format (= <value>)? and sets the variable to initialized
+     *
+     * @param initString a string in the format (= <value>)?
+     * @param type       the type that we exprect the initialization value to have
+     * @return true if the variable is initialized in the string, else false
+     */
+    private boolean isVarInitialized(VarType type, String initString) {
+        //check if the initialization is in the required format
+        Matcher m = Pattern.compile("^\\s*((=)(.*))?$").matcher(initString);
+        if (!m.find())
+            throw new IllegalVarDecException("Invalid variable initialization format: " + initString);
+        //if there is no initialization, return false
+        if (initString.strip().equals(""))
+            return false;
+        //if there is an initialization, return true if it is valid, else it will throw an exception
+        String value = m.group(3).strip();
+        if (value.equals(""))
+            throw new IllegalTypeException("Missing value in variable assignment");
+        if (!isLegalValueForType(value, type))
+            throw new IllegalTypeException("The value " + value +
+                    " is not a valid value for type " + type.toString().toLowerCase());
+        return true;
+    }
+
+    /**
+     * checks if the given value can be assigned into a variable of the given type
+     *
+     * @param value the string representing the value
+     * @param type  the type we want to assign into
+     * @return true if the value is legal, else throw an exception.
+     */
+    private boolean isLegalValueForType(String value, VarType type) {
+        VarType potentialType;
+        potentialType = VarType.getTypeOfValue(value);
+        if (potentialType != null)
+            return DownCaster.cast(type, potentialType);
+        VariableAttribute var = memoryManager.getVarAttributes(value);
+        if (var != null) {
+            return DownCaster.cast(type, var.getVariableType());
+        }
+        return false;
+    }
+
+    /**
+     * gets a variable initialization in the format <varname> (= <value>)? and sets the variable to initialized
+     *
+     * @param varDec a string in the format <varname> (= <value>)?
+     * @return the name of the variable
+     */
+    private String getVariableName(String varDec) {
+        Matcher m = Pattern.compile("^" + VAR_REGEX_EXPRESSION + "\\s*((=)(.*))?$").matcher(varDec);
+        if (!m.find())
+            throw new IllegalVarDecException("Invalid variable identifier or initialization: " + varDec);
+        return m.group(1).strip();
+    }
+
     // programing in stages:
     // first is ignoring empty lines:
     public boolean processLineFirstIteration(String line) throws SyntaxException {
-        boolean emptyLineIsLegit = nextLineMustNotBeEmpty && isEmptyLine.test(line);
+        boolean emptyLineIsLegit = nextLineMustNotBeEmpty && isEmptyLine(line);
         boolean functionDecleration = isFuncDecLegit(line);
-        boolean isVariableDecleration = isVarDec(line, this::addGlobalVariable);
+        boolean isVariableDecleration = isVarDecLineLegit(line, this::addGlobalVariable);
         return emptyLineIsLegit
                 || functionDecleration
                 || isVariableDecleration;
@@ -135,11 +239,17 @@ class LineProcessor {
         boolean isWhileOrIfChunck = isWhileOrIf(line);
         return isWhileOrIfChunck;
     }
-    
+
     private void addGlobalVariable(String name, VariableAttribute variableAttribute) {
-        //todo make this function add a var if the scope is global
+        if (memoryManager.isOuterScope()) {
+            if (memoryManager.declareable(name)) {
+                memoryManager.declareVariable(variableAttribute);
+            }
+        }
         // NOTE I MAKE ANOTHER FIELD TO FILL IN CASE THE GLOABAL WAS
     }
+
+
     
     /**
      * read a function decleration lin: make sure that

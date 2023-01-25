@@ -12,9 +12,9 @@ package symbol_managment;
  */
 public class VariableAttribute {
     
-    private String name;
-    private boolean isFinal;
-    private VarType vType;
+    private final String name;
+    private final boolean isFinal;
+    private final VarType vType;
     private boolean initiated;
     
     public VariableAttribute(String name, boolean isFinal, VarType t, boolean initiated){

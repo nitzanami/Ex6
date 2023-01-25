@@ -58,12 +58,16 @@ public class MemoryManager {
         return memoryScopes.size();
     }
 
-    public void declareVariable(String variableName, boolean isFinal, VarType type, boolean isInitiated) {
-        if (declareable(variableName)) {
-            VariableAttribute var = new VariableAttribute(variableName, isFinal, type, isInitiated);
-            memoryScopes.get(memoryScopes.size() - 1).put(variableName, var);
+    public void declareVariable(VariableAttribute variableAttributes){
+        if(declareable(variableAttributes.getName())){
+            memoryScopes.get(memoryScopes.size() - 1).put(variableAttributes.getName(), variableAttributes);
         }
     }
+
+    public void declareVariable(String variableName, boolean isFinal, VarType type, boolean isInitiated) {
+        declareVariable(new VariableAttribute(variableName, isFinal, type, isInitiated));
+    }
+
     
     /**
      * add depth to the memoryScope.
@@ -78,5 +82,15 @@ public class MemoryManager {
      * in the 1st version: while,if, or a function just ended with a '}' sign.
      */
     public void decreaseScopeDepth(){memoryScopes.remove(memoryScopes.size()-1);}
+
+    public VariableAttribute getVarAttributes(String value) {
+        for(int i = memoryScopes.size() - 1; i >= 0 ; i--){
+            for (VariableAttribute var:memoryScopes.get(i).values()) {
+                if (var.getName().equals(value))
+                    return var;
+            }
+        }
+        return null;
+    }
 }
 
