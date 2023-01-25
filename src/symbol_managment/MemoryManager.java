@@ -19,21 +19,6 @@ public class MemoryManager {
         memoryScopes.add(new HashMap<>());
     }
 
-    /**
-     * check if an item is familiar in the scope.
-     * used in case of using a variable - and answer the query of what type it is.
-     *
-     * @param x the item searched for
-     * @return in case it is, return its type.
-     * else returns NULL;
-     */
-    public VariableAttribute inScope(String x) {
-        for (HashMap h : memoryScopes) {   //todo fix this loop
-            for (VariableAttribute var : memoryScopes.get(memoryScopes.size() - 1).values())
-                if (var.getName().equals(x)) return var;
-        }
-        return null;
-    }
 
     /**
      * return true if x named variable is not declared in the outer scope of this memory manager.
@@ -67,7 +52,6 @@ public class MemoryManager {
     public void declareVariable(String variableName, boolean isFinal, VarType type, boolean isInitiated) {
         declareVariable(new VariableAttribute(variableName, isFinal, type, isInitiated));
     }
-
     
     /**
      * add depth to the memoryScope.
@@ -82,7 +66,15 @@ public class MemoryManager {
      * in the 1st version: while,if, or a function just ended with a '}' sign.
      */
     public void decreaseScopeDepth(){memoryScopes.remove(memoryScopes.size()-1);}
-
+    
+    /**
+     * check if an item is familiar in the scope.
+     * used in case of using a variable - and answer the query of what type it is.
+     *
+     * @param value the item searched for
+     * @return in case it is, return its type.
+     * else returns NULL;
+     */
     public VariableAttribute getVarAttributes(String value) {
         for(int i = memoryScopes.size() - 1; i >= 0 ; i--){
             for (VariableAttribute var:memoryScopes.get(i).values()) {
