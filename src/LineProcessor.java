@@ -21,10 +21,11 @@ class LineProcessor {
     private static final Pattern NUMBER_PATTERN = Pattern.compile(DOUBLE_REGEX_EXPRESSION);
     
     private int scopeDepth = 1;
+    private boolean nextLineMustNotBeEmpty;
+    private boolean lastLineWasReturn; // this must be ^\\s*}\\s*$
     
     MemoryManager memoryManager;
     FunctionManager functionManager;
-    private boolean nextLineMustNotBeEmpty;
     public LineProcessor() {
         memoryManager = new MemoryManager();
         functionManager = new FunctionManager();
@@ -41,6 +42,20 @@ class LineProcessor {
         if(!line.split("//")[0].equals(""))
             throw new SyntaxException(
                     String.format("Commant must be a full line,Error in line:\"%s\"", line));
+        return true;
+    }
+    private boolean isBackwardsCurlyBraces(String line) throws SyntaxException {
+        Matcher m = Pattern.compile("}").matcher(line);
+        if(!m.find()) return false;
+        if(!line.strip().equals("}")) // more then \\s*}\\s*
+            throw new SyntaxException(String.format
+                    ("Backwards Curl must be singular in a line,Error in line:\"%s\"", line));
+        if(memoryManager.isOuterScope())
+            throw new SyntaxException("Backwards Curl must not be at the outer scope");
+        if(!lastLineWasReturn)
+            throw new SyntaxException("Backwards Curl must follow a \"return;\" line");
+        // in case of exiting if/while/func:
+        memoryManager.decreaseScopeDepth();
         return true;
     }
     
@@ -248,10 +263,14 @@ class LineProcessor {
      * @return true if ok false if not ok
      * @throws SyntaxException throe in case of syntax err
      */
-    public boolean processLineSecondIteration(String line) throws SyntaxException {
-//        boolean isWhileOrIfChunck = !memoryManager.isOuterScope() && isWhileOrIf(line);
+    public boolean
+    processLineSecondIteration(String line) throws SyntaxException {
+        if(memoryManager.isOuterScope()) return true;
         boolean isWhileOrIfChunck = isWhileOrIf(line);
-        return isWhileOrIfChunck || isCommentLine(line);
+        return isWhileOrIfChunck
+                || isCommentLine(line)
+                || isBackwardsCurlyBraces(line);
+        // todo add variable declaration, function call,
     }
     
     private void addGlobalVariable(String name, VariableAttribute variableAttribute) {
