@@ -1,8 +1,8 @@
 import symbol_managment.*;
 
 import java.util.ArrayList;
-import java.util.function.BiConsumer;
 import java.util.HashSet;
+import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -13,25 +13,26 @@ import java.util.regex.Pattern;
 
 class LineProcessor {
     // a predicate that handles empty lines
-
-    private static boolean isEmptyLine(String line) {
-        String l = line.replaceAll("\\s", "");
-        return l.length() == 0;
-    };
     private final static String VAR_REGEX_EXPRESSION = "([a-zA-Z][a-zA-Z0-9_]*|_[a-zA-Z0-9_]+)";
     private final static String DOUBLE_REGEX_EXPRESSION = "([+-]?[0-9]+(\\.[0-9]*)?)";
     private final static String INT_REGEX_EXPRESSION = "([+-]?[0-9]+)";
     private final static String BOOLEAN_REGEX_EXPRESSION = "(true|false)";
-    private final static String[] keywords = {"while", "if", "final", "void","true","false"};
+    private final static String[] keywords = {"while", "if", "final", "void", "true", "false"};
+   
+    private int scopeDepth = 1;
     
     MemoryManager memoryManager;
     FunctionManager functionManager;
     private boolean nextLineMustNotBeEmpty;
-    
     public LineProcessor() {
         memoryManager = new MemoryManager();
         functionManager = new FunctionManager();
-        nextLineMustNotBeEmpty = true;
+        nextLineMustNotBeEmpty = false;
+    }
+    
+    private static boolean isEmptyLine(String line) {
+        String l = line.replaceAll("\\s", "");
+        return l.length() == 0;
     }
     
     public static void main(String[] args) {
@@ -88,7 +89,21 @@ class LineProcessor {
         
         return true;
     }
-
+    
+    private static boolean isKeyword(String varName) {
+        try {
+            VarType.getVarType(varName);
+            return true;
+        } catch (Exception ignored) {
+        }
+        
+        for (String keyword : keywords) {
+            if (varName.equals(keyword))
+                return true;
+        }
+        return false;
+    }
+    
     /**
      * check if the given line is in the format for a variable declaration, and if it is, declare the variables
      *
@@ -103,7 +118,7 @@ class LineProcessor {
         //pattern for checking
         return isVarDecLegit(line.replaceFirst(";", ""), onVariableDeclare);
     }
-
+    
     /**
      * check if the given declaration is a valid declaration of a variable list, and if it is, declare the variables.
      * doesnt excpect a semicolon at the end of the input.
@@ -121,7 +136,7 @@ class LineProcessor {
         //get the type of the variables in the declaration.
         String type = m.group(2);
         VarType varType = VarType.getVarType(type);
-
+        
         //separate the declaration into individual variables
         String[] vars = m.group(3).split(",");
         for (String varDec : vars) {
@@ -139,22 +154,7 @@ class LineProcessor {
         }
         return true;
     }
-
-    private static boolean isKeyword(String varName) {
-        try {
-            VarType.getVarType(varName);
-            return true;
-        } catch (Exception ignored) {
-        }
-
-        for (String keyword : keywords) {
-            if (varName.equals(keyword))
-                return true;
-        }
-        return false;
-    }
-
-
+    
     /**
      * gets a variable initialization in the format (= <value>)? and sets the variable to initialized
      *
@@ -179,7 +179,7 @@ class LineProcessor {
                     " is not a valid value for type " + type.toString().toLowerCase());
         return true;
     }
-
+    
     /**
      * checks if the given value can be assigned into a variable of the given type
      *
@@ -198,7 +198,7 @@ class LineProcessor {
         }
         return false;
     }
-
+    
     /**
      * gets a variable initialization in the format <varname> (= <value>)? and sets the variable to initialized
      *
@@ -211,11 +211,21 @@ class LineProcessor {
             throw new IllegalVarDecException("Invalid variable identifier or initialization: " + varDec);
         return m.group(1).strip();
     }
-
-    // programing in stages:
-    // first is ignoring empty lines:
+    
+    /**
+     * for the first iteration: include empty ines, global variable, and function declarations
+     *
+     * @param line input
+     * @return true if ok false if not ok
+     * @throws SyntaxException throe in case of syntax err
+     */
     public boolean processLineFirstIteration(String line) throws SyntaxException {
-        boolean emptyLineIsLegit = nextLineMustNotBeEmpty && isEmptyLine(line);
+        // if it's not the outer scope
+        if (scopeDepth > 1) {
+            if (line.contains("}")) scopeDepth--;
+            return true;
+        }
+        boolean emptyLineIsLegit = !nextLineMustNotBeEmpty && isEmptyLine(line);
         boolean functionDecleration = isFuncDecLegit(line);
         boolean isVariableDecleration = isVarDecLineLegit(line, this::addGlobalVariable);
         return emptyLineIsLegit
@@ -224,18 +234,19 @@ class LineProcessor {
     }
     
     /**
-     * for the second iteration.
+     * for sec iteration include if/while. empty lines. var declaration, var =, } , return,
+     * AND function calls
      *
-     * @param line
-     * @return
-     * @throws SyntaxException
+     * @param line input
+     * @return true if ok false if not ok
+     * @throws SyntaxException throe in case of syntax err
      */
     public boolean processLineSecondIteration(String line) throws SyntaxException {
 //        boolean isWhileOrIfChunck = !memoryManager.isOuterScope() && isWhileOrIf(line);
         boolean isWhileOrIfChunck = isWhileOrIf(line);
         return isWhileOrIfChunck;
     }
-
+    
     private void addGlobalVariable(String name, VariableAttribute variableAttribute) {
         if (memoryManager.isOuterScope()) {
             if (memoryManager.declareable(name)) {
@@ -244,8 +255,6 @@ class LineProcessor {
         }
         // NOTE I MAKE ANOTHER FIELD TO FILL IN CASE THE GLOABAL WAS
     }
-
-
     
     /**
      * read a function decleration lin: make sure that
@@ -293,7 +302,7 @@ class LineProcessor {
             variableNames.add(sVarName);
             funcVariable.add(VarType.getVarType(sType)); // add to list of func vairable
         }
-        
+        scopeDepth++;
         functionManager.addFunction(funcName, funcVariable);
         return true;
     }
