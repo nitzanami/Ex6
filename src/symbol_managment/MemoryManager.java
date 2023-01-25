@@ -36,7 +36,7 @@ public class MemoryManager {
      * @return true if ArrayList hold another scope, that's not the global one.
      */
     public boolean isOuterScope() {
-        return 1 < memoryScopes.size();
+        return 1 == memoryScopes.size();
     }
 
     public int getScopeDepth() {
