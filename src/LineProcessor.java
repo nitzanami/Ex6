@@ -19,11 +19,9 @@ class LineProcessor {
         return l.length() == 0;
     };
     private final static String VAR_REGEX_EXPRESSION = "([a-zA-Z][a-zA-Z0-9_]*|_[a-zA-Z0-9_]+)";
-    private final static String DOUBLE_REGEX_EXPRESSION = "(\\s*(\\+|\\-)?[0-9]+(\\.(0-9)*)?\\s*)";
-    private final static String INT_REGEX_EXPRESSION = "(\\s*(\\+|\\-)?[0-9]+)\\s*";
-    private final static String BOOLEAN_REGEX_EXPRESSION = "(\\s*(true|false)?\\s*)";
-    private final static String RESEREVED_WORD =
-            ("(if|while|true|false|final|return|void|int|char|boolean|double|String)");
+    private final static String DOUBLE_REGEX_EXPRESSION = "([+-]?[0-9]+(\\.[0-9]*)?)";
+    private final static String INT_REGEX_EXPRESSION = "([+-]?[0-9]+)";
+    private final static String BOOLEAN_REGEX_EXPRESSION = "(true|false)";
     private final static String[] keywords = {"while", "if", "final", "void","true","false"};
     
     MemoryManager memoryManager;
