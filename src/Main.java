@@ -1,6 +1,7 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.InputMismatchException;
 
 public class Main {
@@ -14,12 +15,25 @@ public class Main {
             throw new InputMismatchException("Wrong number of parameters");
         }
         
+        LineProcessor p = new LineProcessor();
+    
         try (BufferedReader br = new BufferedReader(new FileReader(args[0]))) {
+            ArrayList<String> lines = new ArrayList<>();
             String line;
-            LineProcessor p = new LineProcessor();
             while ((line = br.readLine()) != null) {
-                if (!p.processLineFirstIteration(line))
+                lines.add(line);
+            }
+            for (String l : lines) {
+                if (!p.processLineFirstIteration(l)) {
                     S_JavaStatus = '1'; // for illegal code
+                    break;
+                }
+            }
+            for(String l: lines) {
+                if (!p.processLineSecondIteration(l)){
+                    S_JavaStatus = '1'; // for illegal code
+                    break;
+                }
             }
             
         } catch (IOException | SyntaxException e) { // todo check which exception is needed to be thrown away.

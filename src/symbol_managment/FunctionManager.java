@@ -1,10 +1,11 @@
 package symbol_managment;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 public class FunctionManager {
-    private HashMap<String, List<VarType>> functionToInputMapping;
+    private HashMap<String, ArrayList<VarType>> functionToInputMapping;
     
     public FunctionManager(){
         functionToInputMapping = new HashMap<>();
@@ -35,13 +36,13 @@ public class FunctionManager {
     
     /**
      * add a function with the parameter type to the functions list
-     * @param functionName
-     * @param parameterTypes
+     * @param functionName name
+     * @param parameterTypes list Of params
      */
-    public void addFunction(String functionName, List<VarType> parameterTypes) throws RuntimeException{
+    public void addFunction(String functionName, ArrayList<VarType> parameterTypes) throws RuntimeException{
         if(!doesFunctionExist(functionName))
             functionToInputMapping.put(functionName,parameterTypes);
-        else throw new RuntimeException(String.format("overloading of {0} was found", functionName));
+        else throw new RuntimeException(String.format("overloading of %s was found", functionName));
     }
     
     /**
