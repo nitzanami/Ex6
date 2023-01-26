@@ -32,7 +32,7 @@ public enum VarType {
      *
      * @return the regec for the variables
      */
-    public static String geVarTypesRegex() {
+    public static String getVarTypesRegex() {
         return "(int|String|boolean|char|double)";
     }
 
