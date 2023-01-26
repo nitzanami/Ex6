@@ -27,12 +27,12 @@ public class Main {
                     break;
                 }
             }
-//            for (String l : lines) {
-//                if (!p.processLineSecondIteration(l)) {
-//                    S_JavaStatus = '1'; // for illegal code
-//                    break;
-//                }
-//            }
+            for (String l : lines) {
+                if (!p.processLineSecondIteration(l)) {
+                    S_JavaStatus = '1'; // for illegal code
+                    break;
+                }
+            }
             System.out.println(S_JavaStatus);
 //             | NoSuchMethodException e
         } catch (IOException | SyntaxException e) { // todo check which exception is needed to be thrown away.
