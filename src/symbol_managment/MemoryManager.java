@@ -2,6 +2,7 @@ package symbol_managment;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * a class that handles the scope at any given moment.
@@ -43,16 +44,53 @@ public class MemoryManager {
         return memoryScopes.size();
     }
 
-    public void declareVariable(VariableAttribute variableAttributes){
-        if(declareable(variableAttributes.getName())){
+    /**
+     * declare a variable if it is not defined in the current scope yet, if it is, throw an exception
+     *
+     * @param variableAttributes The variable that we want to declare.
+     */
+    public void declareVariable(VariableAttribute variableAttributes) {
+        if (declareable(variableAttributes.getName())) {
             memoryScopes.get(memoryScopes.size() - 1).put(variableAttributes.getName(), variableAttributes);
         }
+        throw new IllegalCallerException("The variable " + variableAttributes.getName() +
+                " is already defined in this scope");
     }
 
+    /**
+     * get a list of all uninitialized global variables.
+     * @return the list
+     */
+    public List<VariableAttribute> getUninitializedGlobals(){
+        ArrayList<VariableAttribute> result = new ArrayList<>();
+        for (VariableAttribute var: memoryScopes.get(0).values()){
+            if(!var.getInitiated())
+                result.add(var);
+        }
+        return result;
+    }
+
+    /**
+     * make all global variables in the list uninitialized
+     * @param vars the globals to unInitialize
+     */
+    public void unInitializeGlobals(List<VariableAttribute> vars){
+        for(VariableAttribute var : vars){
+            memoryScopes.get(0).get(var.getName()).setInitiated(false);
+        }
+    }
+    /**
+     * declares a variable with the given attributes
+     *
+     * @param variableName
+     * @param isFinal
+     * @param type
+     * @param isInitiated
+     */
     public void declareVariable(String variableName, boolean isFinal, VarType type, boolean isInitiated) {
         declareVariable(new VariableAttribute(variableName, isFinal, type, isInitiated));
     }
-    
+
     /**
      * add depth to the memoryScope.
      * it means that we entered a new scope,
@@ -76,8 +114,8 @@ public class MemoryManager {
      * else returns NULL;
      */
     public VariableAttribute getVarAttributes(String value) {
-        for(int i = memoryScopes.size() - 1; i >= 0 ; i--){
-            for (VariableAttribute var:memoryScopes.get(i).values()) {
+        for (int i = memoryScopes.size() - 1; i >= 0; i--) {
+            for (VariableAttribute var : memoryScopes.get(i).values()) {
                 if (var.getName().equals(value))
                     return var;
             }
