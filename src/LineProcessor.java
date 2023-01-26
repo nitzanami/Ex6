@@ -151,7 +151,7 @@ class LineProcessor {
      * @throws SyntaxException if it was found.
      */
     private boolean isFuncDecLegit(String line) throws SyntaxException {
-        String funcDecRegex = "^\\s*(void)\\s+(\\w[a-zA-Z0-9_]*)\\s*\\((.*)\\)\\{\\s*$";
+//        String funcDecRegex = "^\\s*(void)\\s+(\\w[a-zA-Z0-9_]*)\\s*\\((.*)\\)\\{\\s*$";
         Matcher m = METHOD_DEC_REGEX.matcher(line);
         // if match not found
         if (!m.find() || m.group(1) == null) return false;
@@ -278,8 +278,45 @@ class LineProcessor {
         return isWhileOrIfChunck
                 || isCommentLine(line)
                 || isBackwardsCurlyBraces(line)
-                || isFunctionCallLegit(line);
+                || isFunctionCallLegit(line)
+                || isFunctionDeclarationSecondIteration(line);
         // todo add variable declaration,
+    }
+    
+    /**
+     * if a function was found, enters a function after increasing scope depth and saving the
+     * arguments there
+     * @param line the line
+     * @return true if it's a function declaration
+     * @throws SyntaxException if something went wrong
+     */
+    private boolean isFunctionDeclarationSecondIteration(String line) throws SyntaxException {
+        Matcher m = METHOD_DEC_REGEX.matcher(line);
+        // if match not found
+        if (!m.find() || m.group(1) == null) return false;
+        if (!memoryManager.isOuterScope()) throw new SyntaxException(String.
+                format("May not use declare func in inner scope. line %s", line));
+    
+        memoryManager.increaseScopeDepth();
+        
+        if (m.group(3).equals("")) return true;
+        // check legit of function inputs(in case there is input)
+        String[] type_Variable = m.group(3).split(",");
+    
+        var patNameCompile = Pattern.compile(VAR_REGEX_EXPRESSION);
+        for (String s : type_Variable) {
+            // declare final stuff?
+            String[] splitInto = s.strip().split(" ");
+            if (splitInto.length > 2) throw new SyntaxException(
+                    String.format("%s is not a valid pair of (type ,var_name)", s));
+    
+            s = s.strip();
+            String sType = s.split(" ")[0].strip(), sVarName = s.split(" ")[1].strip();
+    
+            VariableAttribute variableAttribute = new
+                    VariableAttribute(sVarName,false,VarType.getVarType(sType),true);
+        }
+        return true;
     }
     
     /**
