@@ -15,7 +15,8 @@ import java.util.regex.Pattern;
 class LineProcessor {
     // a predicate that handles empty lines
     private final static String VAR_REGEX_EXPRESSION = "([a-zA-Z][a-zA-Z0-9_]*|_[a-zA-Z0-9_]+)";
-    private final static String DOUBLE_REGEX_EXPRESSION = "([+-]?[0-9]+(\\.[0-9]*)?)"; // todo fix it to not accept 54f.3
+    private final static String DOUBLE_REGEX_EXPRESSION = "^[+-]?\\d+(\\.\\d*)?$"; // todo fix it
+    // to not accept 54f.3
     private final static String INT_REGEX_EXPRESSION = "([+-]?[0-9]+)";
     private final static String BOOLEAN_REGEX_EXPRESSION = "(true|false)";
     private final static String[] keywords = {"while", "if", "final", "void", "true", "false"};
@@ -57,10 +58,10 @@ class LineProcessor {
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   MAIN TOOLS END    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     public static void main(String[] args) {
-        System.out.println(literalStringIsNumber("54f.4"));
-        System.out.println(literalStringIsNumber("54.4"));
-        System.out.println(literalStringIsNumber("54."));
-        System.out.println(literalStringIsNumber("54"));
+        System.out.println(literalStringIsString("\"a\""));
+        System.out.println(literalStringIsString("\""));
+        System.out.println(literalStringIsString("ad2\""));
+        System.out.println(literalStringIsString("\"\"234\""));
         
         LineProcessor l = new LineProcessor();
         try {
@@ -76,8 +77,7 @@ class LineProcessor {
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  HELPERS  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     private static boolean literalStringIsNumber(String str) {
-        Matcher m = NUMBER_PATTERN.matcher(str);
-        return m.find();
+        return str.strip().matches(DOUBLE_REGEX_EXPRESSION);
     }
     
     private static boolean isKeyword(String varName) {
@@ -102,14 +102,13 @@ class LineProcessor {
         return line.replaceFirst(";", "");
     }
     
-    private boolean literalStringIsChar(String varName) {
-        Matcher matcher = Pattern.compile("'\\.'").matcher(varName);
-        return matcher.find();
+    private static boolean literalStringIsChar(String varName) {
+        String x = varName.strip();
+        return x.length()==3 && x.charAt(0) == x.charAt(2) && x.charAt(2)=='\'';
     }
     
-    private boolean literalStringIsString(String varName) {
-        Matcher matcher = Pattern.compile("\"\\.*\"").matcher(varName);
-        return matcher.find();
+    private static boolean literalStringIsString(String varName) {
+        return varName.strip().matches("\".*\"");
     }
     
     private boolean isBackwardsCurlyBraces(String line) throws SyntaxException {
@@ -286,6 +285,7 @@ class LineProcessor {
     /**
      * if a function was found, enters a function after increasing scope depth and saving the
      * arguments there
+     *
      * @param line the line
      * @return true if it's a function declaration
      * @throws SyntaxException if something went wrong
@@ -296,25 +296,25 @@ class LineProcessor {
         if (!m.find() || m.group(1) == null) return false;
         if (!memoryManager.isOuterScope()) throw new SyntaxException(String.
                 format("May not use declare func in inner scope. line %s", line));
-    
+        
         memoryManager.increaseScopeDepth();
         
         if (m.group(3).equals("")) return true;
         // check legit of function inputs(in case there is input)
         String[] type_Variable = m.group(3).split(",");
-    
+        
         var patNameCompile = Pattern.compile(VAR_REGEX_EXPRESSION);
         for (String s : type_Variable) {
             // declare final stuff?
             String[] splitInto = s.strip().split(" ");
             if (splitInto.length > 2) throw new SyntaxException(
                     String.format("%s is not a valid pair of (type ,var_name)", s));
-    
+            
             s = s.strip();
             String sType = s.split(" ")[0].strip(), sVarName = s.split(" ")[1].strip();
-    
+            
             VariableAttribute variableAttribute = new
-                    VariableAttribute(sVarName,false,VarType.getVarType(sType),true);
+                    VariableAttribute(sVarName, false, VarType.getVarType(sType), true);
         }
         return true;
     }
