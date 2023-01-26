@@ -2,8 +2,7 @@ import symbol_managment.*;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.IllegalFormatConversionException;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,7 +19,6 @@ class LineProcessor {
     private final static String BOOLEAN_REGEX_EXPRESSION = "(true|false)";
     private final static String[] keywords = {"while", "if", "final", "void", "true", "false"};
     private static final Pattern NUMBER_PATTERN = Pattern.compile(DOUBLE_REGEX_EXPRESSION);
-
 
     private int scopeDepth = 1;
     private boolean nextLineMustNotBeEmpty;
@@ -67,7 +65,7 @@ class LineProcessor {
     public static void main(String[] args) {
         LineProcessor l = new LineProcessor();
         try {
-            System.out.println(l.isVarDecLineLegit("final    double true  , gba, asf;", (x, y) -> {
+            System.out.println(l.isVarDecLineLegit("final    double true  , gba, asf;", (x) -> {
             }));
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
@@ -137,7 +135,7 @@ class LineProcessor {
      * @param onVariableDeclare a function that decides what to do with a valid variable declaration.
      * @return true if the line is a variable declaration line, else false.
      */
-    private boolean isVarDecLineLegit(String line, BiConsumer<String, VariableAttribute> onVariableDeclare) {
+    private boolean isVarDecLineLegit(String line, Consumer<VariableAttribute> onVariableDeclare) {
         //check if the line contains a variable declaration.
         Matcher m = Pattern.compile("^\\s*(final\\s+)?" + VarType.getVarTypesRegex() + ".*$").matcher(line);
         if (!m.find())
@@ -190,7 +188,7 @@ class LineProcessor {
      * @param onVariableDeclare a function that decides what to do with a valid variable declaration.
      * @return true if the decleration is valid, else false.
      */
-    private boolean isVarDecLegit(String declaration, BiConsumer<String, VariableAttribute> onVariableDeclare) {
+    private boolean isVarDecLegit(String declaration, Consumer<VariableAttribute> onVariableDeclare) {
         //check if the line start with final
         Matcher m = Pattern.compile("^\\s*(final\\s+)?(\\b\\S*\\b)(.*?)$").matcher(declaration);
         if (!m.find())
@@ -213,7 +211,7 @@ class LineProcessor {
             boolean isInitialized = isVarInitialized(varType, initialize);
             //handle the variable declaration according to the OnVariableDeclare function.
             VariableAttribute variableAttribute = new VariableAttribute(varName, isFinal, varType, isInitialized);
-            onVariableDeclare.accept(varName, variableAttribute);
+            onVariableDeclare.accept(variableAttribute);
         }
         return true;
     }
@@ -315,14 +313,18 @@ class LineProcessor {
         // todo add variable declaration, function call,
     }
 
-    private void addGlobalVariable(String name, VariableAttribute variableAttribute) {
+    private void addGlobalVariable(VariableAttribute variableAttribute) {
         if (memoryManager.isOuterScope()) {
-            if (memoryManager.declareable(name)) {
-                memoryManager.declareVariable(variableAttribute);
-            }
+            memoryManager.declareVariable(variableAttribute);
         }
         // NOTE I MAKE ANOTHER FIELD TO FILL IN CASE THE GLOABAL WAS
     }
+    private void addLocalVariable(VariableAttribute variableAttribute){
+        if(!memoryManager.isOuterScope()){
+            memoryManager.declareVariable(variableAttribute);
+        }
+    }
+
 
     /**
      * read a function decleration lin: make sure that
