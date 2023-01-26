@@ -27,15 +27,15 @@ public class Main {
                     break;
                 }
             }
-            for (String l : lines) {
-                if (!p.processLineSecondIteration(l)) {
-                    S_JavaStatus = '1'; // for illegal code
-                    break;
-                }
-            }
+//            for (String l : lines) {
+//                if (!p.processLineSecondIteration(l)) {
+//                    S_JavaStatus = '1'; // for illegal code
+//                    break;
+//                }
+//            }
             System.out.println(S_JavaStatus);
-            
-        } catch (IOException | SyntaxException | NoSuchMethodException e) { // todo check which exception is needed to be thrown away.
+//             | NoSuchMethodException e
+        } catch (IOException | SyntaxException e) { // todo check which exception is needed to be thrown away.
             S_JavaStatus = '1'; // for illegal code
             e.printStackTrace();
             System.out.println(S_JavaStatus);

@@ -50,12 +50,12 @@ public class MemoryManager {
      * @param variableAttributes The variable that we want to declare.
      */
     public void declareVariable(VariableAttribute variableAttributes) {
-        if (declareable(variableAttributes.getName())) {
-            memoryScopes.get(memoryScopes.size() - 1).put(variableAttributes.getName(), variableAttributes);
-        }
-        throw new IllegalCallerException("The variable " + variableAttributes.getName() +
-                " is already defined in this scope");
+        if (!declareable(variableAttributes.getName()))
+            throw new IllegalCallerException("The variable " + variableAttributes.getName() +
+                    " is already defined in this scope");
+        memoryScopes.get(memoryScopes.size() - 1).put(variableAttributes.getName(), variableAttributes);
     }
+
 
     /**
      * get a list of all uninitialized global variables.
