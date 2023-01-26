@@ -21,7 +21,7 @@ public class FunctionManager {
         if (doesFunctionExist(functionName)) {
             return functionToInputMapping.get(functionName);
         }
-        throw new NoSuchMethodException(String.format("{0} Method Not Found", functionName));
+        throw new NoSuchMethodException(String.format("%s Method Not Found", functionName));
     }
     
     /**
