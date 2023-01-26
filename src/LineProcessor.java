@@ -3,6 +3,7 @@ import symbol_managment.*;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Stack;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,13 +31,15 @@ class LineProcessor {
     private int scopeDepth = 1;
     private boolean nextLineMustNotBeEmpty;
     private boolean lastLineWasReturn; // this must be ^\\s*}\\s*$
-
+    private final DepthHandlerFirstIteration depthManager;
+    
     public LineProcessor() {
         memoryManager = new MemoryManager();
         functionManager = new FunctionManager();
         nextLineMustNotBeEmpty = false;
+        depthManager = new DepthHandlerFirstIteration();
     }
-
+    
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   MAIN TOOLS  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -44,7 +47,7 @@ class LineProcessor {
         String l = line.replaceAll("\\s", "");
         return l.length() == 0;
     }
-
+    
     private static boolean isCommentLine(String line) throws SyntaxException {
         Matcher m = Pattern.compile("//").matcher(line);
         if (!m.find()) return false;
@@ -53,7 +56,7 @@ class LineProcessor {
                     String.format("Commant must be a full line,Error in line:\"%s\"", line));
         return true;
     }
-
+    
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   MAIN TOOLS END    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -62,7 +65,7 @@ class LineProcessor {
         System.out.println(literalStringIsString("\""));
         System.out.println(literalStringIsString("ad2\""));
         System.out.println(literalStringIsString("\"\"234\""));
-
+        
         LineProcessor l = new LineProcessor();
         try {
             System.out.println(l.isVarDecLineLegit("final    double true  , gba, asf;", (x) -> {
@@ -72,28 +75,28 @@ class LineProcessor {
             e.printStackTrace();
         }
     }
-
+    
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  HELPERS  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     private static boolean literalStringIsNumber(String str) {
         return str.strip().matches(DOUBLE_REGEX_EXPRESSION);
     }
-
+    
     private static boolean isKeyword(String varName) {
         try {
             VarType.getVarType(varName);
             return true;
         } catch (Exception ignored) {
         }
-
+        
         for (String keyword : keywords) {
             if (varName.equals(keyword))
                 return true;
         }
         return false;
     }
-
+    
     private static String removeSemicolon(String line) {
         //check if the line contains a semicolon
         Matcher m = Pattern.compile("(.*);\\s*$").matcher(line);
@@ -101,16 +104,16 @@ class LineProcessor {
             throw new MissingSemicolonException();
         return line.replaceFirst(";", "");
     }
-
+    
     private static boolean literalStringIsChar(String varName) {
         String x = varName.strip();
         return x.length() == 3 && x.charAt(0) == x.charAt(2) && x.charAt(2) == '\'';
     }
-
+    
     private static boolean literalStringIsString(String varName) {
         return varName.strip().matches("\".*\"");
     }
-
+    
     private boolean isBackwardsCurlyBraces(String line) throws SyntaxException {
         Matcher m = Pattern.compile("}").matcher(line);
         if (!m.find()) return false;
@@ -125,7 +128,7 @@ class LineProcessor {
         memoryManager.decreaseScopeDepth();
         return true;
     }
-
+    
     /**
      * get a string and varify that the value it hold is boolean
      *
@@ -146,7 +149,7 @@ class LineProcessor {
             if (!literalStringIsBoolean(expressions[i].strip())) return false;
         return true;
     }
-
+    
     /**
      * check if the given line is in the format for a variable declaration, and if it is, declare the variables
      *
@@ -162,8 +165,8 @@ class LineProcessor {
         line = removeSemicolon(line);
         return isVarDecLegit(line, onVariableDeclare);
     }
-
-    private boolean isFunctionCallLegit(String line) throws SyntaxException, NoSuchMethodException {
+    
+    private boolean isFunctionCallLegit(String line) throws SyntaxException {
         String format = "^\\s*(\\w[\\w\\d_]*)\\s*\\((.*)\\)\\s*;\\s*$";
         Matcher matcher = Pattern.compile(format).matcher(line);
         if (!matcher.find()) return false;
@@ -172,9 +175,14 @@ class LineProcessor {
                 String.format("unknown function at: %s", line));
         return parametersMatchRequiredVariableTypes(matcher.group(2), funcname);
     }
-
-    private boolean parametersMatchRequiredVariableTypes(String group, String funcname) throws NoSuchMethodException {
-        ArrayList<VarType> paramType = functionManager.getParameterTypes(funcname);
+    
+    private boolean parametersMatchRequiredVariableTypes(String group, String funcname) throws SyntaxException {
+        ArrayList<VarType> paramType;
+        try{
+             paramType = functionManager.getParameterTypes(funcname);
+        } catch (Exception NoSuchMethodException){
+            throw new SyntaxException(String.format("\"%s\":Unknown function error.",funcname));
+        }
         var varNames = group.strip().split(",");
         if (varNames.length != paramType.size())
             throw new InvalidParameterException(String.format("Wrong " +
@@ -196,8 +204,7 @@ class LineProcessor {
         }
         return true;
     }
-
-
+    
     /**
      * for sec iteration include if/while. empty lines. var declaration, var =, } , return,
      * AND function calls
@@ -206,7 +213,7 @@ class LineProcessor {
      * @return true if ok false if not ok
      * @throws SyntaxException throe in case of syntax err
      */
-    public boolean processLineSecondIteration(String line) throws SyntaxException, NoSuchMethodException {
+    public boolean processLineSecondIteration(String line) throws SyntaxException{
         if (memoryManager.isOuterScope()) return true;
         boolean isWhileOrIfChunck = isWhileOrIf(line);
         return isWhileOrIfChunck
@@ -216,7 +223,7 @@ class LineProcessor {
                 || isFunctionDeclarationSecondIteration(line);
         // todo add variable declaration,
     }
-
+    
     /**
      * if a function was found, enters a function after increasing scope depth and saving the
      * arguments there
@@ -231,29 +238,29 @@ class LineProcessor {
         if (!m.find() || m.group(1) == null) return false;
         if (!memoryManager.isOuterScope()) throw new SyntaxException(String.
                 format("May not use declare func in inner scope. line %s", line));
-
+        
         memoryManager.increaseScopeDepth();
-
+        
         if (m.group(3).equals("")) return true;
         // check legit of function inputs(in case there is input)
         String[] type_Variable = m.group(3).split(",");
-
+        
         var patNameCompile = Pattern.compile(VAR_REGEX_EXPRESSION);
         for (String s : type_Variable) {
             // declare final stuff?
             String[] splitInto = s.strip().split(" ");
             if (splitInto.length > 2) throw new SyntaxException(
                     String.format("%s is not a valid pair of (type ,var_name)", s));
-
+            
             s = s.strip();
             String sType = s.split(" ")[0].strip(), sVarName = s.split(" ")[1].strip();
-
+            
             VariableAttribute variableAttribute = new
                     VariableAttribute(sVarName, false, VarType.getVarType(sType), true);
         }
         return true;
     }
-
+    
     /**
      * get a string and varify that the value it hold is boolean
      *
@@ -274,7 +281,7 @@ class LineProcessor {
             if (!literalStringIsBoolean(expressions[i].strip())) return false;
         return true;
     }
-
+    
     /**
      * given an expression, answer if its a boolean or not
      *
@@ -292,7 +299,7 @@ class LineProcessor {
         return variable.getVariableType() == VarType.BOOLEAN || variable.getVariableType() == VarType.INT ||
                 variable.getVariableType() == VarType.DOUBLE;
     }
-
+    
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  VARIABLES HELPERS  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -304,13 +311,13 @@ class LineProcessor {
         }
         // NOTE I MAKE ANOTHER FIELD TO FILL IN CASE THE GLOABAL WAS
     }
-
+    
     public boolean isVarAssignmentLineLegit(String line) {
         Matcher m = Pattern.compile("\\s*" + VAR_REGEX_EXPRESSION + ".*").matcher(line);
         if (!m.find())
             return false;
-        if(memoryManager.getVarAttributes(m.group(1)) == null)
-            return false;
+        if (memoryManager.getVarAttributes(m.group(1)) == null)
+            return false; // todo shouldn't this and the one from above be in the same line?
         line = removeSemicolon(line);
         String[] varAssignments = line.split(",");
         for (String varAssignment : varAssignments) {
@@ -334,7 +341,7 @@ class LineProcessor {
         }
         return true;
     }
-
+    
     /**
      * check if the given declaration is a valid declaration of a variable list, and if it is, declare the variables.
      * doesnt excpect a semicolon at the end of the input.
@@ -352,7 +359,7 @@ class LineProcessor {
         //get the type of the variables in the declaration.
         String type = m.group(2);
         VarType varType = VarType.getVarType(type);
-
+        
         //separate the declaration into individual variables
         String[] vars = m.group(3).split(",");
         for (String varDec : vars) {
@@ -370,7 +377,7 @@ class LineProcessor {
         }
         return true;
     }
-
+    
     /**
      * gets a variable initialization in the format (= <value>)? and sets the variable to initialized
      *
@@ -395,7 +402,7 @@ class LineProcessor {
                     " is not a valid value for type " + type.toString().toLowerCase());
         return true;
     }
-
+    
     /**
      * checks if the given value can be assigned into a variable of the given type
      *
@@ -414,7 +421,7 @@ class LineProcessor {
         }
         return false;
     }
-
+    
     /**
      * gets a variable initialization in the format <varname> (= <value>)? and sets the variable to initialized
      *
@@ -427,7 +434,7 @@ class LineProcessor {
             throw new IllegalVarDecException("Invalid variable identifier or initialization: " + varDec);
         return m.group(1).strip();
     }
-
+    
     /**
      * for the first iteration: include empty ines, global variable, and function declarations
      *
@@ -437,8 +444,8 @@ class LineProcessor {
      */
     public boolean processLineFirstIteration(String line) throws SyntaxException {
         // if it's not the outer scope
-        if (scopeDepth > 1) {
-            if (line.contains("}")) scopeDepth--;
+        if (!depthManager.isOuterScope()) {
+            depthManager.depthAdapter(line);
             return true;
         }
         boolean emptyLineIsLegit = !nextLineMustNotBeEmpty && isEmptyLine(line);
@@ -447,27 +454,29 @@ class LineProcessor {
                 isVarDecLineLegit(line, this::addGlobalVariable);
         boolean isVarAssignmentLegit = memoryManager.isOuterScope() &&
                 isVarAssignmentLineLegit(line);
+        
+        depthManager.depthAdapter(line);
         return emptyLineIsLegit
                 || isCommentLine(line)
                 || functionDeclaration
                 || isVariableDeclaration
                 || isVarAssignmentLegit;
     }
-
+    
     private void addGlobalVariable(VariableAttribute variableAttribute) {
         if (memoryManager.isOuterScope()) {
             memoryManager.declareVariable(variableAttribute);
         }
         // NOTE I MAKE ANOTHER FIELD TO FILL IN CASE THE GLOABAL WAS
     }
-
+    
     private void addLocalVariable(VariableAttribute variableAttribute) {
         if (!memoryManager.isOuterScope()) {
             memoryManager.declareVariable(variableAttribute);
         }
     }
-
-
+    
+    
     /**
      * read a function decleration lin: make sure that
      * it starts with void,
@@ -484,41 +493,46 @@ class LineProcessor {
         String funcDecRegex = "^\\s*(void)\\s+(\\w[a-zA-Z0-9_]*)\\s*\\((.*)\\)\\{\\s*$";
         Matcher m = Pattern.compile(funcDecRegex).matcher(line);
         // if match not found
-        if (!m.find() || m.group(1) == null) return false;
+        if (!line.contains("void ")) return false;
+        if (!m.find() || m.group(1) == null) throw new SyntaxException(String.format(
+                "\"%s\": Not legit line declaration", line));
         String funcName = m.group(2);
         if (functionManager.doesFunctionExist(funcName)) throw new SyntaxException(String.
                 format("May not use the same name for different function. name %s", funcName));
-
-        if (m.group(3).equals("")) return true;
-        // check legit of function inputs(in case there is input)
-        String[] type_Variable = m.group(3).split(",");
-
+    
         ArrayList<VarType> funcVariable = new ArrayList<>();
         HashSet<String> variableNames = new HashSet<>();
-
+        
+        if (m.group(3).equals("")) {
+            functionManager.addFunction(funcName, funcVariable);
+            return true;
+        }
+        // check legit of function inputs(in case there is input)
+        String[] type_Variable = m.group(3).split(",");
+        
+        
         var patNameCompile = Pattern.compile(VAR_REGEX_EXPRESSION);
         for (String s : type_Variable) {
             String[] splitInto = s.strip().split(" ");
             if (splitInto.length > 2) throw new SyntaxException(
                     String.format("%s is not a valid pair of (type ,var_name)", s));
-
+            
             s = s.strip();
             String sType = s.split(" ")[0], sVarName = s.split(" ")[1];
-
+            
             m = patNameCompile.matcher(sVarName);
             if (!m.find()) throw new SyntaxException(
                     String.format("%s is not a valid var_name", sVarName));
             if (variableNames.contains(sVarName)) throw new SyntaxException(String.format("%s is " +
                     "used twice in the same function as variable name", sVarName));
-
+            
             variableNames.add(sVarName);
             funcVariable.add(VarType.getVarType(sType)); // add to list of func vairable
         }
-        scopeDepth++;
         functionManager.addFunction(funcName, funcVariable);
         return true;
     }
-
+    
     private boolean isWhileOrIf(String line) throws SyntaxException {
         // regex for "if"\"while" then "(" then something that should be boolean expression, then ){
         String WhileIfRegex = "^\\s*(while|if)\\s*\\((.*)\\)\\s*\\{\\s*$";
@@ -529,12 +543,30 @@ class LineProcessor {
         nextLineMustNotBeEmpty = true;  // after { the next line must not be empty
         return true;
     }
-
-    private static boolean stringIsNumber(String str) {
-        Matcher m = NUMBER_PATTERN.matcher(str);
-        if (m.find())
-            return true;
-        return false;
+    
+    /**
+     * count how many curly brackets will be open after this line.
+     * in case of 1 do not enter outer scope but to increase\decrease scope depth.
+     */
+    private static class DepthHandlerFirstIteration {
+        static Stack<Character> depth;
+        
+        public DepthHandlerFirstIteration() {
+            depth = new Stack<>();
+        }
+        
+        boolean isOuterScope() {
+            return depth.size() == 0;
+        }
+        
+        void depthAdapter(String s) throws SyntaxException {
+            try {
+                if (s.contains("{")) depth.add('{');
+                else if (s.contains("}")) depth.pop();
+            } catch (Exception EmptyStackException) {
+                throw new SyntaxException("miss matching curly braces");
+            }
+        }
     }
 }
     
