@@ -49,7 +49,7 @@ public class MemoryManager {
      *
      * @param variableAttributes The variable that we want to declare.
      */
-    public void declareVariable(VariableAttribute variableAttributes) {
+    public void declareVariable(VariableAttribute variableAttributes) { // todo rename addAttribute?
         if (!declareable(variableAttributes.getName()))
             throw new IllegalCallerException("The variable " + variableAttributes.getName() +
                     " is already defined in this scope");
