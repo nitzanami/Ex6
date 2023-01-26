@@ -14,7 +14,7 @@ public class Main {
         }
         
         LineProcessor p = new LineProcessor();
-    
+        
         try (BufferedReader br = new BufferedReader(new FileReader(args[0]))) {
             ArrayList<String> lines = new ArrayList<>();
             String line;
@@ -27,17 +27,19 @@ public class Main {
                     break;
                 }
             }
-            for(String l: lines) {
-                if (!p.processLineSecondIteration(l)){
+            for (String l : lines) {
+                if (!p.processLineSecondIteration(l)) {
                     S_JavaStatus = '1'; // for illegal code
                     break;
                 }
             }
-            
-        } catch (IOException | SyntaxException e) { // todo check which exception is needed to be thrown away.
-            e.printStackTrace();
-        } finally {
             System.out.println(S_JavaStatus);
+            
+        } catch (IOException | SyntaxException | NoSuchMethodException e) { // todo check which exception is needed to be thrown away.
+            S_JavaStatus = '1'; // for illegal code
+            e.printStackTrace();
+            System.out.println(S_JavaStatus);
+            System.out.println(e.getMessage());
         }
     }
 }
