@@ -29,14 +29,14 @@ class LineProcessor {
     MemoryManager memoryManager;
     FunctionManager functionManager;
     private int scopeDepth = 1;
-    private boolean nextLineMustNotBeEmpty;
+//    private boolean nextLineMustNotBeEmpty;
     private boolean lastLineWasReturn; // this must be ^\\s*}\\s*$
     private final DepthHandlerFirstIteration depthManager;
     
     public LineProcessor() {
         memoryManager = new MemoryManager();
         functionManager = new FunctionManager();
-        nextLineMustNotBeEmpty = false;
+//        nextLineMustNotBeEmpty = false;
         depthManager = new DepthHandlerFirstIteration();
     }
     
@@ -215,7 +215,7 @@ class LineProcessor {
      */
     public boolean processLineSecondIteration(String line) throws SyntaxException{
         depthManager.reset();
-        if (isCommentLine(line)) return true;
+        if (isCommentLine(line) || isEmptyLine(line)) return true;
         if (depthManager.isOuterScope() && line.contains(";")) return true; // in case of global
         // dec
         boolean isWhileOrIfChunck = isWhileOrIf(line);
@@ -455,7 +455,7 @@ class LineProcessor {
             depthManager.depthAdapter(line);
             return true;
         }
-        boolean emptyLineIsLegit = !nextLineMustNotBeEmpty && isEmptyLine(line);
+        boolean emptyLineIsLegit = isEmptyLine(line);
         boolean functionDeclaration = isFuncDecLegit(line);
         boolean isVariableDeclaration = memoryManager.isOuterScope() &&
                 isVarDecLineLegit(line, this::addGlobalVariable);
@@ -547,7 +547,7 @@ class LineProcessor {
         if (!matcher.find() || matcher.group(1) == null) return false;
         varifyBoolean(matcher.group(2).strip());
         memoryManager.increaseScopeDepth(); // upon entering a new scope.
-        nextLineMustNotBeEmpty = true;  // after { the next line must not be empty
+        //nextLineMustNotBeEmpty = true;  // after { the next line must not be empty
         return true;
     }
     
