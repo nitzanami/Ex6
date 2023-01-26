@@ -214,13 +214,18 @@ class LineProcessor {
      * @throws SyntaxException throe in case of syntax err
      */
     public boolean processLineSecondIteration(String line) throws SyntaxException{
-        if (memoryManager.isOuterScope()) return true;
+        depthManager.reset();
+        if (isCommentLine(line)) return true;
+        if (depthManager.isOuterScope() && line.contains(";")) return true; // in case of global
+        // dec
         boolean isWhileOrIfChunck = isWhileOrIf(line);
+        boolean BackwardsCurlyBraces = isBackwardsCurlyBraces(line);
+        boolean FunctionCallLegit = isFunctionCallLegit(line);
+        boolean LegitFunctionDeclaration2rdIteration = LegitFunctionDeclaration2rdIteration(line);
         return isWhileOrIfChunck
-                || isCommentLine(line)
-                || isBackwardsCurlyBraces(line)
-                || isFunctionCallLegit(line)
-                || isFunctionDeclarationSecondIteration(line);
+                || BackwardsCurlyBraces
+                || FunctionCallLegit
+                || LegitFunctionDeclaration2rdIteration;
         // todo add variable declaration,
     }
     
@@ -232,16 +237,17 @@ class LineProcessor {
      * @return true if it's a function declaration
      * @throws SyntaxException if something went wrong
      */
-    private boolean isFunctionDeclarationSecondIteration(String line) throws SyntaxException {
+    private boolean LegitFunctionDeclaration2rdIteration(String line) throws SyntaxException {
         Matcher m = METHOD_DEC_REGEX.matcher(line);
         // if match not found
         if (!m.find() || m.group(1) == null) return false;
-        if (!memoryManager.isOuterScope()) throw new SyntaxException(String.
-                format("May not use declare func in inner scope. line %s", line));
-        
+        if (!depthManager.isOuterScope()) throw new SyntaxException(String.
+                format("Method Declaration In Inner Scope Error: \"%s\"", line));
+        if(!functionManager.doesFunctionExist(m.group(2))) throw new SyntaxException(String.
+                format("Unknown Method Error: \"%s\"", line));
         memoryManager.increaseScopeDepth();
-        
-        if (m.group(3).equals("")) return true;
+    
+        if (m.group(3).equals("")) {return true;}
         // check legit of function inputs(in case there is input)
         String[] type_Variable = m.group(3).split(",");
         
@@ -255,9 +261,10 @@ class LineProcessor {
             s = s.strip();
             String sType = s.split(" ")[0].strip(), sVarName = s.split(" ")[1].strip();
             
-            VariableAttribute variableAttribute = new
-                    VariableAttribute(sVarName, false, VarType.getVarType(sType), true);
+            memoryManager.declareVariable(new VariableAttribute
+                    (sVarName, false, VarType.getVarType(sType), true));
         }
+        
         return true;
     }
     
@@ -567,6 +574,8 @@ class LineProcessor {
                 throw new SyntaxException("miss matching curly braces");
             }
         }
+        
+        void reset(){depth = new Stack<>();}
     }
 }
     
