@@ -1,0 +1,6 @@
+void main(boolean b){
+    if(b && true || false){
+        b = false;
+    }
+    return;
+}

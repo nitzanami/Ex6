@@ -1,0 +1,5 @@
+//should fail because a is final
+void function(final int a, final boolean b){
+    a = 5;
+    return;
+}
