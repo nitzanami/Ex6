@@ -21,17 +21,17 @@ class LineProcessor {
     private final static String INT_REGEX_EXPRESSION = "([+-]?[0-9]+)";
     private final static String BOOLEAN_REGEX_EXPRESSION = "(true|false)";
     private final static String[] keywords = {"while", "if", "final", "void", "true", "false"};
-
+    
     private static final String FUNCTION_REGEX_START = "^\\s*(void)\\s+(\\w[a-zA-Z0-9_]*)\\s*\\((.*)\\)";
     private static final Pattern FUNCTION_CALL = Pattern.compile(FUNCTION_REGEX_START + "\\s*;\\s*$");
     private static final Pattern METHOD_DEC_REGEX = Pattern.compile(FUNCTION_REGEX_START + "\\s*\\{\\s*$");
     private static final Pattern NUMBER_PATTERN = Pattern.compile(DOUBLE_REGEX_EXPRESSION);
+    private final DepthHandlerFirstIteration depthManager;
+    private final int scopeDepth = 1;
     MemoryManager memoryManager;
     FunctionManager functionManager;
-    private int scopeDepth = 1;
-//    private boolean nextLineMustNotBeEmpty;
+    //    private boolean nextLineMustNotBeEmpty;
     private boolean lastLineWasReturn; // this must be ^\\s*}\\s*$
-    private final DepthHandlerFirstIteration depthManager;
     
     public LineProcessor() {
         memoryManager = new MemoryManager();
@@ -114,17 +114,23 @@ class LineProcessor {
         return varName.strip().matches("\".*\"");
     }
     
+    public void prepareForIteration2() {
+        depthManager.reset();
+    }
+    
     private boolean isBackwardsCurlyBraces(String line) throws SyntaxException {
-        Matcher m = Pattern.compile("}").matcher(line);
-        if (!m.find()) return false;
-        if (!line.strip().equals("}")) // more then \\s*}\\s*
+        if (!line.contains("}")) return false;
+        if (!(line.strip().equals("}"))) {
             throw new SyntaxException(String.format
                     ("Backwards Curl must be singular in a line,Error in line:\"%s\"", line));
+        }
+        // so we got a \\s*}\\s* line:
         if (memoryManager.isOuterScope())
             throw new SyntaxException("Backwards Curl must not be at the outer scope");
-        if (!lastLineWasReturn)
-            throw new SyntaxException("Backwards Curl must follow a \"return;\" line");
-        // in case of exiting if/while/func:
+        //in case of func, previous line must be return, so
+        if (!lastLineWasReturn && memoryManager.getScopeDepth() == 2)
+            throw new SyntaxException("in Method Backwards Curl must follow a \"return;\" line");
+        // in case of exiting if/while or function (after return) closing braces:
         memoryManager.decreaseScopeDepth();
         return true;
     }
@@ -171,19 +177,20 @@ class LineProcessor {
         Matcher matcher = Pattern.compile(format).matcher(line);
         if (!matcher.find()) return false;
         String funcname = matcher.group(1);
-        if (functionManager.doesFunctionExist(funcname)) throw new SyntaxException(
-                String.format("unknown function at: %s", line));
+        if (!functionManager.doesFunctionExist(funcname))
+            throw new SyntaxException(String.format("unknown function at: %s", line));
         return parametersMatchRequiredVariableTypes(matcher.group(2), funcname);
     }
     
     private boolean parametersMatchRequiredVariableTypes(String group, String funcname) throws SyntaxException {
         ArrayList<VarType> paramType;
-        try{
-             paramType = functionManager.getParameterTypes(funcname);
-        } catch (Exception NoSuchMethodException){
-            throw new SyntaxException(String.format("\"%s\":Unknown function error.",funcname));
+        try {
+            paramType = functionManager.getParameterTypes(funcname);
+        } catch (Exception NoSuchMethodException) {
+            throw new SyntaxException(String.format("\"%s\":Unknown function error.", funcname));
         }
         var varNames = group.strip().split(",");
+        if(varNames.length==1 && varNames[0].equals("") && paramType.size()==0) return true; //empty
         if (varNames.length != paramType.size())
             throw new InvalidParameterException(String.format("Wrong " +
                     "number Of variables in function call \"%s\" using\"%s\"", funcname, group));
@@ -213,20 +220,24 @@ class LineProcessor {
      * @return true if ok false if not ok
      * @throws SyntaxException throe in case of syntax err
      */
-    public boolean processLineSecondIteration(String line) throws SyntaxException{
-        depthManager.reset();
+    public boolean processLineSecondIteration(String line) throws SyntaxException {
         if (isCommentLine(line) || isEmptyLine(line)) return true;
-        if (depthManager.isOuterScope() && line.contains(";")) return true; // in case of global
-        // dec
+        if (memoryManager.isOuterScope() && line.contains(";")) return true; //was checked 1st iter
         boolean isWhileOrIfChunck = isWhileOrIf(line);
         boolean BackwardsCurlyBraces = isBackwardsCurlyBraces(line);
         boolean FunctionCallLegit = isFunctionCallLegit(line);
         boolean LegitFunctionDeclaration2rdIteration = LegitFunctionDeclaration2rdIteration(line);
+        lastLineWasReturn = isReturnLine(line); // !must not happen before isBackwardsCurlyBraces()!
         return isWhileOrIfChunck
                 || BackwardsCurlyBraces
                 || FunctionCallLegit
                 || LegitFunctionDeclaration2rdIteration;
         // todo add variable declaration,
+    }
+    
+    private boolean isReturnLine(String line) {
+        Matcher matcher = Pattern.compile("^\\s*return\\s*;\\s*$").matcher(line);
+        return matcher.find();
     }
     
     /**
@@ -243,11 +254,13 @@ class LineProcessor {
         if (!m.find() || m.group(1) == null) return false;
         if (!depthManager.isOuterScope()) throw new SyntaxException(String.
                 format("Method Declaration In Inner Scope Error: \"%s\"", line));
-        if(!functionManager.doesFunctionExist(m.group(2))) throw new SyntaxException(String.
+        if (!functionManager.doesFunctionExist(m.group(2))) throw new SyntaxException(String.
                 format("Unknown Method Error: \"%s\"", line));
         memoryManager.increaseScopeDepth();
-    
-        if (m.group(3).equals("")) {return true;}
+        
+        if (m.group(3).equals("")) {
+            return true;
+        }
         // check legit of function inputs(in case there is input)
         String[] type_Variable = m.group(3).split(",");
         
@@ -268,8 +281,10 @@ class LineProcessor {
         return true;
     }
     
+    // todo how come its not used (asking  myself)
+    
     /**
-     * get a string and varify that the value it hold is boolean
+     * get an expression and verify that the value it hold is boolean
      *
      * @param expression the input string
      * @return true if boolean expression- otherwise false
@@ -506,7 +521,7 @@ class LineProcessor {
         String funcName = m.group(2);
         if (functionManager.doesFunctionExist(funcName)) throw new SyntaxException(String.
                 format("May not use the same name for different function. name %s", funcName));
-    
+        
         ArrayList<VarType> funcVariable = new ArrayList<>();
         HashSet<String> variableNames = new HashSet<>();
         
@@ -547,7 +562,6 @@ class LineProcessor {
         if (!matcher.find() || matcher.group(1) == null) return false;
         varifyBoolean(matcher.group(2).strip());
         memoryManager.increaseScopeDepth(); // upon entering a new scope.
-        //nextLineMustNotBeEmpty = true;  // after { the next line must not be empty
         return true;
     }
     
@@ -575,7 +589,9 @@ class LineProcessor {
             }
         }
         
-        void reset(){depth = new Stack<>();}
+        void reset() {
+            depth = new Stack<>();
+        }
     }
 }
     
