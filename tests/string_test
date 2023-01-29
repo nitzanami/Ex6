@@ -1,0 +1,2 @@
+String a = "";
+a = "   testing if   strings can handle      spaces     ";

@@ -1,0 +1,17 @@
+int a;
+final String str = "hi, this is a test"
+
+void foo(int num, final char c){
+    if(c > num{
+        foo2(c);
+        num = 20, a = 15;
+        num = a;
+    }
+    return;
+}
+
+
+void foo2(final char c1){
+    char c = c1, b = c1, a = c1;
+    return;
+}
