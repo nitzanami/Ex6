@@ -1,9 +1,9 @@
 final int a = 12, num = 544;
 double d = -.246;
 boolean flag;
-void func(double a, string var){
-    string other = var;
-    var = " testing random !@#$%^&*(){}[] symbols in a string to make sure they are valid //\\";
+void func(double a, String var){
+    String other = var;
+    var = " testing random !@#$%^&*(){}[], symbols in a string to make sure they are valid //\\";
     if(d){
         final int d = 653;
         double num;

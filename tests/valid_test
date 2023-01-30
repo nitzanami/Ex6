@@ -1,8 +1,8 @@
 int a;
-final String str = "hi, this is a test"
+final String str = "hi this is a test";
 
 void foo(int num, final char c){
-    if(c > num{
+    if(c > num){
         foo2(c);
         num = 20, a = 15;
         num = a;

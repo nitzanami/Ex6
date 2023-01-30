@@ -33,8 +33,6 @@ public class Main {
                     S_JavaStatus = '1'; // for illegal code
                     break;
                 }
-                // todo remove
-                System.out.println(l);
             }
             System.out.println(S_JavaStatus);
 //             | NoSuchMethodException e

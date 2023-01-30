@@ -10,14 +10,14 @@ package symbol_managment;
  *      include getters and a setter for initiated.
  *      exclude the value the variable holds
  */
-public class VariableAttribute {
+public class VariableAttributes {
     
     private final String name;
     private final boolean isFinal;
     private final VarType vType;
     private boolean initiated;
     
-    public VariableAttribute(String name, boolean isFinal, VarType t, boolean initiated){
+    public VariableAttributes(String name, boolean isFinal, VarType t, boolean initiated){
         this.name = name;
         this.isFinal = isFinal;
         this.vType = t;
@@ -25,7 +25,7 @@ public class VariableAttribute {
     }
     
     public String getName() {return name;}
-    public boolean getInitiated(){return initiated;}
+    public boolean isInitialized(){return initiated;}
     public VarType getVariableType(){return vType;}
     public boolean isFinal(){return isFinal;}
     public void setInitiated(boolean initiated){this.initiated = initiated;}

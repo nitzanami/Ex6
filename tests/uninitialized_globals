@@ -9,4 +9,5 @@ void func1(){
 //shouldn't compile because a is not initialized in this scope
 void func2(){
     int b = a;
+    return;
 }

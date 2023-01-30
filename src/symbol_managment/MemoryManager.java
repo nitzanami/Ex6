@@ -12,7 +12,7 @@ import java.util.List;
 
 
 public class MemoryManager {
-    private final ArrayList<HashMap<String, VariableAttribute>> memoryScopes;
+    private final ArrayList<HashMap<String, VariableAttributes>> memoryScopes;
 
     public MemoryManager() {
         memoryScopes = new ArrayList<>();
@@ -27,8 +27,8 @@ public class MemoryManager {
      * @param x the name of the variable
      * @return true if x named variable is not declared in the outer scope.
      */
-    public boolean declareable(String x) {
-        for (VariableAttribute var : (memoryScopes.get(memoryScopes.size() - 1).values()))
+    public boolean declarable(String x) {
+        for (VariableAttributes var : (memoryScopes.get(memoryScopes.size() - 1).values()))
             if (var.getName().equals(x)) return false;
         return true;
     }
@@ -49,8 +49,8 @@ public class MemoryManager {
      *
      * @param variableAttributes The variable that we want to declare.
      */
-    public void declareVariable(VariableAttribute variableAttributes) { // todo rename addAttribute?
-        if (!declareable(variableAttributes.getName()))
+    public void declareVariable(VariableAttributes variableAttributes) { // todo rename addAttribute?
+        if (!declarable(variableAttributes.getName()))
             throw new IllegalCallerException("The variable " + variableAttributes.getName() +
                     " is already defined in this scope");
         memoryScopes.get(memoryScopes.size() - 1).put(variableAttributes.getName(), variableAttributes);
@@ -61,10 +61,10 @@ public class MemoryManager {
      * get a list of all uninitialized global variables.
      * @return the list
      */
-    public List<VariableAttribute> getUninitializedGlobals(){
-        ArrayList<VariableAttribute> result = new ArrayList<>();
-        for (VariableAttribute var: memoryScopes.get(0).values()){
-            if(!var.getInitiated())
+    public List<VariableAttributes> getUninitializedGlobals(){
+        ArrayList<VariableAttributes> result = new ArrayList<>();
+        for (VariableAttributes var: memoryScopes.get(0).values()){
+            if(!var.isInitialized())
                 result.add(var);
         }
         return result;
@@ -74,21 +74,10 @@ public class MemoryManager {
      * make all global variables in the list uninitialized
      * @param vars the globals to unInitialize
      */
-    public void unInitializeGlobals(List<VariableAttribute> vars){
-        for(VariableAttribute var : vars){
+    public void unInitializeGlobals(List<VariableAttributes> vars){
+        for(VariableAttributes var : vars){
             memoryScopes.get(0).get(var.getName()).setInitiated(false);
         }
-    }
-    /**
-     * declares a variable with the given attributes
-     *
-     * @param variableName
-     * @param isFinal
-     * @param type
-     * @param isInitiated
-     */
-    public void declareVariable(String variableName, boolean isFinal, VarType type, boolean isInitiated) {
-        declareVariable(new VariableAttribute(variableName, isFinal, type, isInitiated));
     }
 
     /**
@@ -113,9 +102,9 @@ public class MemoryManager {
      * @return in case it is, return its type.
      * else returns NULL;
      */
-    public VariableAttribute getVarAttributes(String value) {
+    public VariableAttributes getVarAttributes(String value) {
         for (int i = memoryScopes.size() - 1; i >= 0; i--) {
-            for (VariableAttribute var : memoryScopes.get(i).values()) {
+            for (VariableAttributes var : memoryScopes.get(i).values()) {
                 if (var.getName().equals(value))
                     return var;
             }
