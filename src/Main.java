@@ -1,4 +1,6 @@
+import javax.sound.sampled.Line;
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -7,42 +9,37 @@ import java.util.InputMismatchException;
 public class Main {
     // todo check right return values
     public static void main(String[] args) {
-        char S_JavaStatus = '0';
+        Status S_JavaStatus;
         if (args.length != 1) {
-            S_JavaStatus = '2';
-            throw new InputMismatchException("Wrong number of parameters");
+            System.out.println(2);
+            System.err.println("Invalid arguments for program");
+            return;
         }
-        
-        LineProcessor p = new LineProcessor();
-        
-        try (BufferedReader br = new BufferedReader(new FileReader(args[0]))) {
-            ArrayList<String> lines = new ArrayList<>();
-            String line;
-            while ((line = br.readLine()) != null) {
-                lines.add(line);
+        try {
+            LineProcessor p = new LineProcessor(args[0]);
+            S_JavaStatus = p.runFirstIteration();
+            if (S_JavaStatus != Status.VALID) {
+                System.out.println(S_JavaStatus);
+                System.err.println("Invalid line");
+                return;
             }
-            for (String l : lines) {
-                System.out.println(l);
-                if (!p.processLineFirstIteration(l)) {
-                    S_JavaStatus = '1'; // for illegal code
-                    break;
-                }
+            S_JavaStatus = p.runSecondIteration();
+            if (S_JavaStatus != Status.VALID) {
+                System.out.println(S_JavaStatus);
+                System.err.println("Invalid line");
+                return;
             }
-            p.prepareForIteration2();
-            for (String l : lines) {
-                if (!p.processLineSecondIteration(l)) {
-                    S_JavaStatus = '1'; // for illegal code
-                    break;
-                }
-            }
-            System.out.println(S_JavaStatus);
-//             | NoSuchMethodException e
-        } catch (IOException | SyntaxException e) { // todo check which exception is needed to be thrown away.
-            S_JavaStatus = '1'; // for illegal code
-            e.printStackTrace();
-            System.out.println(S_JavaStatus);
-            System.out.println(e.getMessage());
+        } catch (IOException e) {
+            System.out.println(Status.IOERROR);
+            System.err.println("Invalid arguments for program");
+            return;
+        } catch (SyntaxException e) {
+            System.out.println(Status.SYNTAX);
+            System.err.println(e.getMessage());
+            return;
         }
+        System.out.println(Status.VALID);
     }
 }
+
 

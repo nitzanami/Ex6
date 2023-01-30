@@ -1,5 +1,8 @@
 import symbol_managment.*;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,22 +28,41 @@ class LineProcessor {
     private static final Pattern FUNCTION_CALL = Pattern.compile(FUNCTION_REGEX_START + "\\s*;\\s*$");
     private static final Pattern METHOD_DEC_REGEX = Pattern.compile(FUNCTION_REGEX_START + "\\s*\\{\\s*$");
     private static final Pattern NUMBER_PATTERN = Pattern.compile(DOUBLE_REGEX_EXPRESSION);
+    private final String fileName;
     MemoryManager memoryManager;
     FunctionManager functionManager;
     //    private boolean nextLineMustNotBeEmpty;
     private boolean lastLineWasReturn; // this must be ^\\s*}\\s*$
     private List<VariableAttributes> uninitializedGlobals;
 
-    public LineProcessor() {
+    public LineProcessor(String fileName) {
+        this.fileName = fileName;
         memoryManager = new MemoryManager();
         functionManager = new FunctionManager();
         uninitializedGlobals = new ArrayList<>();
-//        nextLineMustNotBeEmpty = false;
     }
 
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   MAIN TOOLS  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    /**
+     * find all the global variables and function signatures
+     *
+     * @return a value that represents the validity of the input
+     * @throws IOException     if file io fails
+     * @throws SyntaxException if illegal syntax is found
+     */
+    public Status runFirstIteration() throws IOException, SyntaxException {
+        String line;
+        BufferedReader reader = new BufferedReader(new FileReader(fileName));
+        while ((line = reader.readLine()) != null) {
+            if (!processLineFirstIteration(line))
+                return Status.SYNTAX; // for illegal code
+        }
+        uninitializedGlobals = memoryManager.getUninitializedGlobals();
+        return Status.VALID;
+    }
 
     /**
      * for the first iteration: include empty ines, global variable, and function declarations
@@ -49,7 +71,7 @@ class LineProcessor {
      * @return true if the line is valid. else false
      * @throws SyntaxException throe in case of syntax err
      */
-    public boolean processLineFirstIteration(String line) throws SyntaxException {
+    private boolean processLineFirstIteration(String line) throws SyntaxException {
         // if it's not the outer scope
 
         boolean isValid = isEmptyLine(line) ||
@@ -57,9 +79,26 @@ class LineProcessor {
                 isWhileOrIf(line) ||
                 isBackwardsCurlyBraces(line) ||
                 (!memoryManager.isOuterScope() || (isVarDecLineValid(line) ||
-                        isVarAssignmentLineLegit(line))) ;
+                        isVarAssignmentLineLegit(line)));
         lastLineWasReturn = isReturnLine(line);
         return isValid || lastLineWasReturn;
+    }
+
+    /**
+     * finish the syntax checking and return the status
+     *
+     * @return a value that represents the validity of the input
+     * @throws IOException     if file io fails
+     * @throws SyntaxException if illegal syntax is found
+     */
+    public Status runSecondIteration() throws IOException, SyntaxException {
+        String line;
+        BufferedReader reader = new BufferedReader(new FileReader(fileName));
+        while ((line = reader.readLine()) != null) {
+            if (!processLineSecondIteration(line))
+                return Status.SYNTAX; // for illegal code
+        }
+        return Status.VALID;
     }
 
     /**
@@ -70,7 +109,7 @@ class LineProcessor {
      * @return true if ok. else false
      * @throws SyntaxException throe in case of syntax err
      */
-    public boolean processLineSecondIteration(String line) throws SyntaxException {
+    private boolean processLineSecondIteration(String line) throws SyntaxException {
         if (memoryManager.isOuterScope() && line.contains(";")) return true; //was checked 1st iteration
         boolean isValid = isWhileOrIf(line) ||
                 isFunctionCallLegit(line) ||
@@ -150,10 +189,6 @@ class LineProcessor {
         return varName.strip().matches("\"[^\"]*\"");
     }
 
-    public void prepareForIteration2() {
-        uninitializedGlobals = memoryManager.getUninitializedGlobals();
-    }
-
     private boolean isBackwardsCurlyBraces(String line) throws SyntaxException {
         if (!line.contains("}")) return false;
         if (!(line.strip().equals("}"))) {
@@ -167,7 +202,7 @@ class LineProcessor {
         if (!lastLineWasReturn && memoryManager.isFunctionScope())
             throw new SyntaxException("in Method Backwards Curl must follow a \"return;\" line");
         // in case of exiting if/while or function (after return) closing braces:
-        if(memoryManager.isFunctionScope())
+        if (memoryManager.isFunctionScope())
             memoryManager.unInitializeGlobals(uninitializedGlobals);
 
         memoryManager.decreaseScopeDepth();
@@ -376,6 +411,7 @@ class LineProcessor {
 
     /**
      * split a line by commas that are not inside of strings
+     *
      * @param line the input line
      * @return the original string, split by commas that are not in string.
      */
@@ -558,6 +594,8 @@ class LineProcessor {
         memoryManager.increaseScopeDepth(); // upon entering a new scope.
         return true;
     }
+
+
 }
     
 
