@@ -2,6 +2,7 @@ import symbol_managment.*;
 
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,10 +29,12 @@ class LineProcessor {
     FunctionManager functionManager;
     //    private boolean nextLineMustNotBeEmpty;
     private boolean lastLineWasReturn; // this must be ^\\s*}\\s*$
+    private List<VariableAttributes> uninitializedGlobals;
 
     public LineProcessor() {
         memoryManager = new MemoryManager();
         functionManager = new FunctionManager();
+        uninitializedGlobals = new ArrayList<>();
 //        nextLineMustNotBeEmpty = false;
     }
 
@@ -52,8 +55,9 @@ class LineProcessor {
         boolean isValid = isEmptyLine(line) ||
                 isFuncDecValid(line, true) ||
                 isWhileOrIf(line) ||
+                isBackwardsCurlyBraces(line) ||
                 (!memoryManager.isOuterScope() || (isVarDecLineValid(line) ||
-                        isVarAssignmentLineLegit(line))) || isBackwardsCurlyBraces(line);
+                        isVarAssignmentLineLegit(line))) ;
         lastLineWasReturn = isReturnLine(line);
         return isValid || lastLineWasReturn;
     }
@@ -71,9 +75,9 @@ class LineProcessor {
         boolean isValid = isWhileOrIf(line) ||
                 isFunctionCallLegit(line) ||
                 isFuncDecValid(line, false) ||
+                isBackwardsCurlyBraces(line) ||
                 (!memoryManager.isOuterScope() &&
                         (isVarAssignmentLineLegit(line) || isVarDecLineValid(line))) ||
-                isBackwardsCurlyBraces(line) ||
                 (isCommentLine(line) ||
                         isEmptyLine(line));
 
@@ -147,7 +151,7 @@ class LineProcessor {
     }
 
     public void prepareForIteration2() {
-        //depthManager.reset();
+        uninitializedGlobals = memoryManager.getUninitializedGlobals();
     }
 
     private boolean isBackwardsCurlyBraces(String line) throws SyntaxException {
@@ -160,9 +164,12 @@ class LineProcessor {
         if (memoryManager.isOuterScope())
             throw new SyntaxException("Backwards Curl must not be at the outer scope");
         //in case of func, previous line must be return, so
-        if (!lastLineWasReturn && (memoryManager.getScopeDepth() == 2))
+        if (!lastLineWasReturn && memoryManager.isFunctionScope())
             throw new SyntaxException("in Method Backwards Curl must follow a \"return;\" line");
         // in case of exiting if/while or function (after return) closing braces:
+        if(memoryManager.isFunctionScope())
+            memoryManager.unInitializeGlobals(uninitializedGlobals);
+
         memoryManager.decreaseScopeDepth();
         return true;
     }
@@ -249,46 +256,46 @@ class LineProcessor {
         return matcher.find();
     }
 
-    /**
-     * if a function was found, enters a function after increasing scope depth and saving the
-     * arguments there
-     *
-     * @param line the line
-     * @return true if it's a function declaration
-     * @throws SyntaxException if something went wrong
-     */
-    private boolean LegitFunctionDeclaration2rdIteration(String line) throws SyntaxException {
-        Matcher m = METHOD_DEC_REGEX.matcher(line);
-        // if match not found
-        if (!m.find() || m.group(1) == null) return false;
-        if (!memoryManager.isOuterScope()) throw new SyntaxException(String.
-                format("Method Declaration In Inner Scope Error: \"%s\"", line));
-        if (!functionManager.doesFunctionExist(m.group(2))) throw new SyntaxException(String.
-                format("Unknown Method Error: \"%s\"", line));
-        memoryManager.increaseScopeDepth();
-
-        if (m.group(3).equals("")) {
-            return true;
-        }
-        // check legit of function inputs(in case there is input)
-        String[] type_Variable = m.group(3).split(",");
-
-        Pattern patNameCompile = Pattern.compile(VAR_REGEX_EXPRESSION);
-        for (String s : type_Variable) {
-            // declare final stuff?
-            String[] splitInto = s.strip().split(" ");
-            if (splitInto.length > 2) throw new SyntaxException(
-                    String.format("%s is not a valid pair of (type ,var_name)", s));
-
-            s = s.strip();
-            String sType = s.split(" ")[0].strip(), sVarName = s.split(" ")[1].strip();
-
-            memoryManager.declareVariable(new VariableAttributes
-                    (sVarName, false, VarType.getVarType(sType), true));
-        }
-
-        return true;
-    }
+//    /**
+//     * if a function was found, enters a function after increasing scope depth and saving the
+//     * arguments there
+//     *
+//     * @param line the line
+//     * @return true if it's a function declaration
+//     * @throws SyntaxException if something went wrong
+//     */
+//    private boolean LegitFunctionDeclaration2rdIteration(String line) throws SyntaxException {
+//        Matcher m = METHOD_DEC_REGEX.matcher(line);
+//        // if match not found
+//        if (!m.find() || m.group(1) == null) return false;
+//        if (!memoryManager.isOuterScope()) throw new SyntaxException(String.
+//                format("Method Declaration In Inner Scope Error: \"%s\"", line));
+//        if (!functionManager.doesFunctionExist(m.group(2))) throw new SyntaxException(String.
+//                format("Unknown Method Error: \"%s\"", line));
+//        memoryManager.increaseScopeDepth();
+//
+//        if (m.group(3).equals("")) {
+//            return true;
+//        }
+//        // check legit of function inputs(in case there is input)
+//        String[] type_Variable = m.group(3).split(",");
+//
+//        Pattern patNameCompile = Pattern.compile(VAR_REGEX_EXPRESSION);
+//        for (String s : type_Variable) {
+//            // declare final stuff?
+//            String[] splitInto = s.strip().split(" ");
+//            if (splitInto.length > 2) throw new SyntaxException(
+//                    String.format("%s is not a valid pair of (type ,var_name)", s));
+//
+//            s = s.strip();
+//            String sType = s.split(" ")[0].strip(), sVarName = s.split(" ")[1].strip();
+//
+//            memoryManager.declareVariable(new VariableAttributes
+//                    (sVarName, false, VarType.getVarType(sType), true));
+//        }
+//
+//        return true;
+//    }
 
     // todo how come its not used (asking  myself)
 
@@ -348,7 +355,8 @@ class LineProcessor {
             varAssignment = varAssignment.strip();
             if (varAssignment.equals(""))
                 throw new IllegalVarDecException("Missing variable assignment between commas");
-            m = Pattern.compile("^" + VAR_REGEX_EXPRESSION + "\\s*=\\s* (\\S*|\"[^\"]*\")\\s*$").matcher(varAssignment);
+            m = Pattern.compile("^" + VAR_REGEX_EXPRESSION +
+                    "\\s*=\\s* (\\S*|\"[^\"]*\")\\s*$").matcher(varAssignment);
             if (!m.find())
                 throw new IllegalVarDecException("Illegal format for variable assignment: " + line);
             String name = m.group(1);
@@ -532,8 +540,9 @@ class LineProcessor {
         String[] argumentDeclarations = m.group(3).split(",");
         for (String s : argumentDeclarations) {
             isVarDecLegit(s, this::addFunctionArgument);
-            String varName = getVariableName(s.replaceFirst("(?:final\\s+)?\\s*" + VarType.getVarTypesRegex(), "").strip());
-            funcVariables.add(memoryManager.getVarAttributes(varName).getVariableType());// add to list of func vairable
+            String varName = getVariableName(s.replaceFirst("(?:final\\s+)?\\s*" +
+                    VarType.getVarTypesRegex(), "").strip());
+            funcVariables.add(memoryManager.getVarAttributes(varName).getVariableType());// add to list of func variable
         }
         if (isFirstIteration)
             functionManager.addFunction(funcName, funcVariables);

@@ -22,6 +22,7 @@ public class Main {
                 lines.add(line);
             }
             for (String l : lines) {
+                System.out.println(l);
                 if (!p.processLineFirstIteration(l)) {
                     S_JavaStatus = '1'; // for illegal code
                     break;

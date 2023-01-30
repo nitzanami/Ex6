@@ -40,8 +40,12 @@ public class MemoryManager {
         return 1 == memoryScopes.size();
     }
 
-    public int getScopeDepth() {
-        return memoryScopes.size();
+    /**
+     * check if we are in the outer scope of a function
+     * @return true if the scope we are in is a function, and not an if or while inside it.
+     */
+    public boolean isFunctionScope() {
+        return 2 == memoryScopes.size();
     }
 
     /**
@@ -59,12 +63,13 @@ public class MemoryManager {
 
     /**
      * get a list of all uninitialized global variables.
+     *
      * @return the list
      */
-    public List<VariableAttributes> getUninitializedGlobals(){
+    public List<VariableAttributes> getUninitializedGlobals() {
         ArrayList<VariableAttributes> result = new ArrayList<>();
-        for (VariableAttributes var: memoryScopes.get(0).values()){
-            if(!var.isInitialized())
+        for (VariableAttributes var : memoryScopes.get(0).values()) {
+            if (!var.isInitialized())
                 result.add(var);
         }
         return result;
@@ -72,10 +77,11 @@ public class MemoryManager {
 
     /**
      * make all global variables in the list uninitialized
+     *
      * @param vars the globals to unInitialize
      */
-    public void unInitializeGlobals(List<VariableAttributes> vars){
-        for(VariableAttributes var : vars){
+    public void unInitializeGlobals(List<VariableAttributes> vars) {
+        for (VariableAttributes var : vars) {
             memoryScopes.get(0).get(var.getName()).setInitiated(false);
         }
     }
@@ -85,15 +91,19 @@ public class MemoryManager {
      * it means that we entered a new scope,
      * in the 1st version: while,if, or a function.
      */
-    public void increaseScopeDepth(){memoryScopes.add(new HashMap<>());}
-    
+    public void increaseScopeDepth() {
+        memoryScopes.add(new HashMap<>());
+    }
+
     /**
      * decrease depth from the memoryScope.
      * it means that we exited the current scope,
      * in the 1st version: while,if, or a function just ended with a '}' sign.
      */
-    public void decreaseScopeDepth(){memoryScopes.remove(memoryScopes.size()-1);}
-    
+    public void decreaseScopeDepth() {
+        memoryScopes.remove(memoryScopes.size() - 1);
+    }
+
     /**
      * check if an item is familiar in the scope.
      * used in case of using a variable - and answer the query of what type it is.
