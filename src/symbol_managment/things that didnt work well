@@ -1,0 +1,17 @@
+//first 1 - string should not accept false as its value
+void func(double x, boolean b){
+    if(true){
+        String b;
+        b = false;
+    }
+    return;
+}
+
+//2 - its working but a is was not initiated, and must not be used till initialisation
+void func(double x, boolean b){
+    if(true){
+        int a;
+        x = a;
+    }
+    return;
+}

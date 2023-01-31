@@ -1,13 +1,10 @@
-import javax.sound.sampled.Line;
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
+/**
+ * Writen by
+ */
+
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.InputMismatchException;
 
 public class Main {
-    // todo check right return values
     public static void main(String[] args) {
         Status S_JavaStatus;
         if (args.length != 1) {

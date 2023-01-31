@@ -23,7 +23,7 @@ class LineProcessor {
     private final static String INT_REGEX_EXPRESSION = "([+-]?[0-9]+)";
     private final static String BOOLEAN_REGEX_EXPRESSION = "(true|false)";
     private final static String[] keywords = {"while", "if", "final", "void", "true", "false", "return"};
-
+    
     private static final String FUNCTION_REGEX_START = "^\\s*(void)\\s+(\\w+)\\s*\\((.*)\\)";
     private static final Pattern FUNCTION_CALL = Pattern.compile(FUNCTION_REGEX_START + "\\s*;\\s*$");
     private static final Pattern METHOD_DEC_REGEX = Pattern.compile(FUNCTION_REGEX_START + "\\s*\\{\\s*$");
@@ -34,18 +34,81 @@ class LineProcessor {
     //    private boolean nextLineMustNotBeEmpty;
     private boolean lastLineWasReturn; // this must be ^\\s*}\\s*$
     private List<VariableAttributes> uninitializedGlobals;
-
+    
     public LineProcessor(String fileName) {
         this.fileName = fileName;
         memoryManager = new MemoryManager();
         functionManager = new FunctionManager();
         uninitializedGlobals = new ArrayList<>();
     }
-
+    
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   MAIN TOOLS  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+    
+    private static boolean isEmptyLine(String line) {
+        String l = line.replaceAll("\\s", "");
+        return l.length() == 0;
+    }
+    
+    private static boolean isCommentLine(String line) throws SyntaxException {
+        Matcher m = Pattern.compile("//").matcher(line);
+        if (!m.find()) return false;
+        if (!line.split("//")[0].equals(""))
+            throw new SyntaxException(
+                    String.format("Comment must be a full line,Error in line:\"%s\"", line));
+        return true;
+    }
+    
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  HELPERS  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    private static boolean literalStringIsNumber(String str) {
+        return str.strip().matches(DOUBLE_REGEX_EXPRESSION);
+    }
+    
+    private static boolean isKeyword(String varName) {
+        try {
+            VarType.getVarType(varName);
+            return true;
+        } catch (Exception ignored) {
+        }
+        
+        for (String keyword : keywords) {
+            if (varName.equals(keyword))
+                return true;
+        }
+        return false;
+    }
+    
+    /**
+     * remove a semicolon from the end of a line.
+     *
+     * @param line The line to edit
+     * @return the line, after removing the semicolon.
+     * @throws MissingSemicolonException if the line doesn't end with a semicolon.
+     */
+    private static String removeSemicolon(String line) {
+        //check if the line contains a semicolon
+        Matcher m = Pattern.compile("[^;]*;\\s*$").matcher(line);
+        if (!m.find())
+            throw new MissingSemicolonException();
+        return line.replaceFirst(";", "");
+    }
+    
+    private static boolean literalStringIsChar(String varName) {
+        String x = varName.strip();
+        return x.length() == 3 && x.charAt(0) == x.charAt(2) && x.charAt(2) == '\'';
+    }
+    
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   MAIN TOOLS END    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    private static boolean literalStringIsString(String varName) {
+        return varName.strip().matches("\"[^\"]*\"");
+    }
+    
     /**
      * find all the global variables and function signatures
      *
@@ -63,7 +126,7 @@ class LineProcessor {
         uninitializedGlobals = memoryManager.getUninitializedGlobals();
         return Status.VALID;
     }
-
+    
     /**
      * for the first iteration: include empty ines, global variable, and function declarations
      *
@@ -73,7 +136,7 @@ class LineProcessor {
      */
     private boolean processLineFirstIteration(String line) throws SyntaxException {
         // if it's not the outer scope
-
+        
         boolean isValid = isEmptyLine(line) ||
                 isFuncDecValid(line, true) ||
                 isWhileOrIf(line) ||
@@ -83,7 +146,7 @@ class LineProcessor {
         lastLineWasReturn = isReturnLine(line);
         return isValid || lastLineWasReturn;
     }
-
+    
     /**
      * finish the syntax checking and return the status
      *
@@ -100,7 +163,7 @@ class LineProcessor {
         }
         return Status.VALID;
     }
-
+    
     /**
      * for sec iteration include if/while. empty lines. var declaration, var =, } , return,
      * AND function calls
@@ -110,7 +173,8 @@ class LineProcessor {
      * @throws SyntaxException throe in case of syntax err
      */
     private boolean processLineSecondIteration(String line) throws SyntaxException {
-        if (memoryManager.isOuterScope() && line.contains(";")) return true; //was checked 1st iteration
+        if (memoryManager.isOuterScope() && line.contains(";"))
+            return true; //was checked 1st iteration
         boolean isValid = isWhileOrIf(line) ||
                 isFunctionCallLegit(line) ||
                 isFuncDecValid(line, false) ||
@@ -119,76 +183,12 @@ class LineProcessor {
                         (isVarAssignmentLineLegit(line) || isVarDecLineValid(line))) ||
                 (isCommentLine(line) ||
                         isEmptyLine(line));
-
-
+        
+        
         lastLineWasReturn = isReturnLine(line); // !must not happen before isBackwardsCurlyBraces()!
         return isValid || lastLineWasReturn;
     }
-
-    private static boolean isEmptyLine(String line) {
-        String l = line.replaceAll("\\s", "");
-        return l.length() == 0;
-    }
-
-    private static boolean isCommentLine(String line) throws SyntaxException {
-        Matcher m = Pattern.compile("//").matcher(line);
-        if (!m.find()) return false;
-        if (!line.split("//")[0].equals(""))
-            throw new SyntaxException(
-                    String.format("Comment must be a full line,Error in line:\"%s\"", line));
-        return true;
-    }
-
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   MAIN TOOLS END    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  HELPERS  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    private static boolean literalStringIsNumber(String str) {
-        return str.strip().matches(DOUBLE_REGEX_EXPRESSION);
-    }
-
-    private static boolean isKeyword(String varName) {
-        try {
-            VarType.getVarType(varName);
-            return true;
-        } catch (Exception ignored) {
-        }
-
-        for (String keyword : keywords) {
-            if (varName.equals(keyword))
-                return true;
-        }
-        return false;
-    }
-
-    /**
-     * remove a semicolon from the end of a line.
-     *
-     * @param line The line to edit
-     * @return the line, after removing the semicolon.
-     * @throws MissingSemicolonException if the line doesn't end with a semicolon.
-     */
-    private static String removeSemicolon(String line) {
-        //check if the line contains a semicolon
-        Matcher m = Pattern.compile("[^;]*;\\s*$").matcher(line);
-        if (!m.find())
-            throw new MissingSemicolonException();
-        return line.replaceFirst(";", "");
-    }
-
-    private static boolean literalStringIsChar(String varName) {
-        String x = varName.strip();
-        return x.length() == 3 && x.charAt(0) == x.charAt(2) && x.charAt(2) == '\'';
-    }
-
-    private static boolean literalStringIsString(String varName) {
-        return varName.strip().matches("\"[^\"]*\"");
-    }
-
+    
     private boolean isBackwardsCurlyBraces(String line) throws SyntaxException {
         if (!line.contains("}")) return false;
         if (!(line.strip().equals("}"))) {
@@ -204,11 +204,11 @@ class LineProcessor {
         // in case of exiting if/while or function (after return) closing braces:
         if (memoryManager.isFunctionScope())
             memoryManager.unInitializeGlobals(uninitializedGlobals);
-
+        
         memoryManager.decreaseScopeDepth();
         return true;
     }
-
+    
     /**
      * get a string and verify that the value it hold is boolean
      *
@@ -229,7 +229,7 @@ class LineProcessor {
             if (!literalStringIsBoolean(expressions[i].strip())) return false;
         return true;
     }
-
+    
     /**
      * check if the given line is in the format for a variable declaration, and if it is, declare the variables
      *
@@ -244,7 +244,7 @@ class LineProcessor {
         line = removeSemicolon(line);
         return isVarDecLegit(line, memoryManager::declareVariable);
     }
-
+    
     private boolean isFunctionCallLegit(String line) throws SyntaxException {
         String format = "^\\s*(\\w[\\w\\d_]*)\\s*\\((.*)\\)\\s*;\\s*$";
         Matcher matcher = Pattern.compile(format).matcher(line);
@@ -254,7 +254,7 @@ class LineProcessor {
             throw new SyntaxException(String.format("unknown function at: %s", line));
         return parametersMatchRequiredVariableTypes(matcher.group(2), funcName);
     }
-
+    
     private boolean parametersMatchRequiredVariableTypes(String group, String funcName) throws SyntaxException {
         ArrayList<VarType> paramType;
         try {
@@ -263,10 +263,13 @@ class LineProcessor {
             throw new SyntaxException(String.format("\"%s\":Unknown function error.", funcName));
         }
         var varNames = group.strip().split(",");
-        if (varNames.length == 1 && varNames[0].equals("") && paramType.size() == 0) return true; //empty
+        if (varNames.length == 1 && varNames[0].equals("") && paramType.size() == 0)
+            return true; //empty
         if (varNames.length != paramType.size())
-            throw new InvalidParameterException(String.format("Wrong " +
-                    "number Of variables in function call \"%s\" using\"%s\"", funcName, group));
+            throw new InvalidParameterException(String.format("in " +
+                    "parametersMatchRequiredVariableTypes,\n Wrong " +
+                    "number Of variables used in function call \"%s(%s)\"", funcName,
+                    group));
         for (int i = 0; i < paramType.size(); i++) {
             var v = paramType.get(i);
             var input = varNames[i].strip();
@@ -276,19 +279,27 @@ class LineProcessor {
             if (v == VarType.STRING && literalStringIsString(input)) continue;
             if (v == VarType.CHAR && literalStringIsChar(input)) continue;
             // if not, if it's a known variable:
-            if (!DownCaster.firstAcceptsSecond
-                    (paramType.get(i), memoryManager.getVarAttributes(input).getVariableType())) {
-                throw new InvalidParameterException(String.format("Wrong " +
-                        "type Of variables in function call \"%s\" using\"%s\"", funcName, group));
+            try {
+                if (!DownCaster.firstAcceptsSecond
+                        (paramType.get(i), memoryManager.getVarAttributes(input).getVariableType())) {
+                    throw new InvalidParameterException(String.format("Wrong " +
+                            "type Of variables in function call \"%s\" using\"%s\"", funcName, group));
+                }
+            } catch (NullPointerException exception) {
+                throw new SyntaxException(String.format("At parametersMatchRequiredVariableTypes, " +
+                        "mismatching parameters while calling function: \"%s\"",funcName));
             }
         }
         return true;
     }
-
-
-    private boolean isReturnLine(String line) {
+    
+    
+    private boolean isReturnLine(String line) throws SyntaxException {
+        if (!line.contains(" return")) return false;
         Matcher matcher = Pattern.compile("^\\s*return\\s*;\\s*$").matcher(line);
-        return matcher.find();
+        if (matcher.find())
+            return true;
+        throw new SyntaxException(String.format("in Method isReturnLine:\"%s\"", line));
     }
 
 //    /**
@@ -331,9 +342,9 @@ class LineProcessor {
 //
 //        return true;
 //    }
-
+    
     // todo how come its not used (asking  myself)
-
+    
     /**
      * get an expression and verify that the value it hold is boolean
      *
@@ -354,7 +365,7 @@ class LineProcessor {
             if (!literalStringIsBoolean(expressions[i].strip())) return false;
         return true;
     }
-
+    
     /**
      * given an expression, answer if it's a boolean or not
      *
@@ -372,11 +383,11 @@ class LineProcessor {
         return variable.getVariableType() == VarType.BOOLEAN || variable.getVariableType() == VarType.INT ||
                 variable.getVariableType() == VarType.DOUBLE;
     }
-
+    
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  VARIABLES HELPERS  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+    
     public boolean isVarAssignmentLineLegit(String line) {
         Matcher m = Pattern.compile("\\s*" + VAR_REGEX_EXPRESSION + ".*").matcher(line);
         if (!m.find())
@@ -408,7 +419,7 @@ class LineProcessor {
         }
         return true;
     }
-
+    
     /**
      * split a line by commas that are not inside of strings
      *
@@ -418,7 +429,7 @@ class LineProcessor {
     private String[] splitByCommas(String line) {
         return line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
     }
-
+    
     /**
      * check if the given declaration is a valid declaration of a variable list, and if it is, declare the variables.
      * doesn't expect a semicolon at the end of the input.
@@ -436,7 +447,7 @@ class LineProcessor {
         //get the type of the variables in the declaration.
         String type = m.group(2);
         VarType varType = VarType.getVarType(type);
-
+        
         //separate the declaration into individual variables
         String[] vars = splitByCommas(m.group(3));
         for (String varDec : vars) {
@@ -454,7 +465,7 @@ class LineProcessor {
         }
         return true;
     }
-
+    
     /**
      * gets a variable initialization in the format (= <value>)? and sets the variable to initialized
      *
@@ -479,7 +490,7 @@ class LineProcessor {
                     " is not a valid value for type " + type.toString().toLowerCase());
         return true;
     }
-
+    
     /**
      * checks if the given value can be assigned into a variable of the given type
      *
@@ -498,7 +509,7 @@ class LineProcessor {
         }
         return false;
     }
-
+    
     /**
      * gets a variable initialization in the format <varname> (= <value>)? and sets the variable to initialized
      *
@@ -511,16 +522,16 @@ class LineProcessor {
             throw new IllegalVarDecException("Invalid variable identifier or initialization: " + varDec);
         return m.group(1).strip();
     }
-
-
-    private void addGlobalVariable(VariableAttributes attributes) {
+    
+    
+    private void addGlobalVariable(VariableAttributes attributes) throws SyntaxException {
         if (!memoryManager.isOuterScope())
             return;
         if (attributes.isFinal() && !attributes.isInitialized())
-            throw new RuntimeException("final variable is not initialized");//todo change exception type
+            throw new SyntaxException("final variable is not initialized");
         memoryManager.declareVariable(attributes);
     }
-
+    
     private void addFunctionArgument(VariableAttributes attributes) {
         //function arguments are always initialized
         memoryManager.declareVariable(new VariableAttributes(
@@ -529,14 +540,14 @@ class LineProcessor {
                 attributes.getVariableType(),
                 true));
     }
-
+    
     private void addLocalVariable(VariableAttributes variableAttributes) {
         if (!memoryManager.isOuterScope()) {
             memoryManager.declareVariable(variableAttributes);
         }
     }
-
-
+    
+    
     /**
      * read a function declaration line: make sure that
      * it starts with void,
@@ -552,7 +563,7 @@ class LineProcessor {
     private boolean isFuncDecValid(String line, boolean isFirstIteration) throws SyntaxException {
         //check if the line is a function decleration line:
         if (!line.matches("^\\s*void\\s+.*$")) return false;
-
+        
         String funcDecRegex = "^\\s*(void)\\s+(\\w\\w*)\\s*\\((.*)\\)\\{\\s*$";
         Matcher m = Pattern.compile(funcDecRegex).matcher(line);
         // if match not found
@@ -561,9 +572,9 @@ class LineProcessor {
         String funcName = m.group(2);
         if (isFirstIteration && functionManager.doesFunctionExist(funcName))
             throw new SyntaxException("May not use the same name for different function. name: " + funcName);
-
+        
         ArrayList<VarType> funcVariables = new ArrayList<>();
-
+        
         memoryManager.increaseScopeDepth();
         // check validity of function inputs(in case there is input)
         String arguments = m.group(3);
@@ -584,7 +595,7 @@ class LineProcessor {
             functionManager.addFunction(funcName, funcVariables);
         return true;
     }
-
+    
     private boolean isWhileOrIf(String line) {
         // regex for "if"\"while" then "(" then something that should be boolean expression, then ){
         String WhileIfRegex = "^\\s*(while|if)\\s*\\((.*)\\)\\s*\\{\\s*$";
@@ -594,8 +605,8 @@ class LineProcessor {
         memoryManager.increaseScopeDepth(); // upon entering a new scope.
         return true;
     }
-
-
+    
+    
 }
     
 
