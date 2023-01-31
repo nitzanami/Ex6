@@ -27,8 +27,9 @@ class LineProcessor {
     private final static String DOUBLE_REGEX_EXPRESSION = "^[+-]?\\d+(\\.\\d*)?$";
     private final static String[] keywords = {"while", "if", "final", "void", "true", "false", "return"};
     
-    private static final String ERR_FUNC_WHILE_OR_IF = "in isWhileOrIf, ";
+    private static final String ERR_FUNC_VERIFY_BOOLEAN = "in verifyBoolean, ";
     private static final String ERR_MGS_UNKNOWN_VARIABLE = "Unknown variable as boolean expression";
+    private static final String ERR_MGS_NOT_INITIALISED = "attempt to use an uninitialized variable detected";
     
     private final String fileName;
     MemoryManager memoryManager;
@@ -212,30 +213,31 @@ class LineProcessor {
      */
     private boolean verifyBoolean(String s) throws SyntaxException {
         String boolExpression = "^\\s*((true|false)|([+-]*\\d+\\.\\d*)|(\\w[\\w\\d_]*)|" +
-                "(_[\\w\\d_]+))(\\s*(&&|\\|\\|)\\s*.*)$";
+                "(_[\\w\\d_]+))(\\s*(&&|\\|\\|)\\s*.*)?$";
         Matcher m = Pattern.compile(boolExpression).matcher(s);
         if (!m.find() || m.group(1) == null) return false;
         
         //ex:true false or 54.3
         boolean firstPartIsBooleanLiteral = (m.group(2) != null || m.group(3) != null);
         if (!firstPartIsBooleanLiteral) {
-            var v = m.group(4) == null ?
+            var v = m.group(4) != null ?
                     memoryManager.getVarAttributes(m.group(4)) :
                     memoryManager.getVarAttributes(m.group(5));
             if (v == null)
-                throw new SyntaxException(ERR_FUNC_WHILE_OR_IF + ERR_MGS_UNKNOWN_VARIABLE);
+                throw new SyntaxException(ERR_FUNC_VERIFY_BOOLEAN + ERR_MGS_UNKNOWN_VARIABLE);
             var t = v.getVariableType();
+            if(!v.isInitialized())
+                throw new SyntaxException(ERR_FUNC_VERIFY_BOOLEAN + ERR_MGS_NOT_INITIALISED);
             if (!(t.equals(VarType.BOOLEAN) || t.equals(VarType.INT) || t.equals(VarType.DOUBLE)))
-                throw new SyntaxException(ERR_FUNC_WHILE_OR_IF + ERR_MGS_UNKNOWN_VARIABLE);
+                throw new SyntaxException(ERR_FUNC_VERIFY_BOOLEAN + ERR_MGS_UNKNOWN_VARIABLE);
         }
         
         if (m.group(6) == null) return true;
         String[] expressions = m.group(6).strip().split("(&&|\\|\\|)");
         if (expressions.length == 0)
-            throw new SyntaxException(ERR_FUNC_WHILE_OR_IF + "extra && or || in boolean expression");
+            throw new SyntaxException(ERR_FUNC_VERIFY_BOOLEAN + "extra && or || in boolean expression");
         for (int i = 1; i < expressions.length; i++)
-            if (!literalStringIsBoolean(expressions[i].strip()))
-                throw new SyntaxException(ERR_FUNC_WHILE_OR_IF + ERR_MGS_UNKNOWN_VARIABLE);
+            return verifyBoolean(expressions[i]);
         return true;
     }
     

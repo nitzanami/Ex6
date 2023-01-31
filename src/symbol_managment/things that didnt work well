@@ -1,16 +1,21 @@
-//first 1 - string should not accept false as its value
+//first 1 - string accepts boolean value, mb there are others of the same problem
+// bool < int < double is ok, other things are not legit as far as I know.
+String b;
+b = false;
+
+//2 - its working but 'a' isn't initiated (must not be used till initialisation)
 void func(double x, boolean b){
     if(true){
-        String b;
-        b = false;
+        int a;
+        x = a;
     }
     return;
 }
 
-//2 - its working but a is was not initiated, and must not be used till initialisation
+//2.2 same if global:
+int a;
 void func(double x, boolean b){
     if(true){
-        int a;
         x = a;
     }
     return;
