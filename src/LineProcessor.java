@@ -11,28 +11,29 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * java line i one of those:
- * empty line - only spaces. \s regex.
+ * LineProcessor main logic is to accept a s-java line and either throw an informative error of
+ * returns false.
+ * <p>
+ * It's done by iterating twice on the file at first filling up
+ * memoryManager - with global variable
+ * functionManager - function names, and the parameters each func accepts
+ * <p>
+ * then iterating again and reading it line by line, using the knowledge from the prev iteration.
  */
 
 class LineProcessor {
     // a predicate that handles empty lines
     private final static String VAR_REGEX_EXPRESSION = "([a-zA-Z]\\w*|_\\w+)";
-    private final static String DOUBLE_REGEX_EXPRESSION = "^[+-]?\\d+(\\.\\d*)?$"; // todo fix it
-    // to not accept 54f.3
-    private final static String INT_REGEX_EXPRESSION = "([+-]?[0-9]+)";
-    private final static String BOOLEAN_REGEX_EXPRESSION = "(true|false)";
+    private final static String DOUBLE_REGEX_EXPRESSION = "^[+-]?\\d+(\\.\\d*)?$";
     private final static String[] keywords = {"while", "if", "final", "void", "true", "false", "return"};
     
-    private static final String FUNCTION_REGEX_START = "^\\s*(void)\\s+(\\w+)\\s*\\((.*)\\)";
-    private static final Pattern FUNCTION_CALL = Pattern.compile(FUNCTION_REGEX_START + "\\s*;\\s*$");
-    private static final Pattern METHOD_DEC_REGEX = Pattern.compile(FUNCTION_REGEX_START + "\\s*\\{\\s*$");
-    private static final Pattern NUMBER_PATTERN = Pattern.compile(DOUBLE_REGEX_EXPRESSION);
+    private static final String ERR_FUNC_WHILE_OR_IF = "in isWhileOrIf, ";
+    private static final String ERR_MGS_UNKNOWN_VARIABLE = "Unknown variable as boolean expression";
+    
     private final String fileName;
     MemoryManager memoryManager;
     FunctionManager functionManager;
-    //    private boolean nextLineMustNotBeEmpty;
-    private boolean lastLineWasReturn; // this must be ^\\s*}\\s*$
+    private boolean lastLineWasReturn;
     private List<VariableAttributes> uninitializedGlobals;
     
     public LineProcessor(String fileName) {
@@ -41,10 +42,6 @@ class LineProcessor {
         functionManager = new FunctionManager();
         uninitializedGlobals = new ArrayList<>();
     }
-    
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   MAIN TOOLS  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     
     private static boolean isEmptyLine(String line) {
         String l = line.replaceAll("\\s", "");
@@ -60,9 +57,6 @@ class LineProcessor {
         return true;
     }
     
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  HELPERS  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     private static boolean literalStringIsNumber(String str) {
         return str.strip().matches(DOUBLE_REGEX_EXPRESSION);
     }
@@ -101,12 +95,31 @@ class LineProcessor {
         return x.length() == 3 && x.charAt(0) == x.charAt(2) && x.charAt(2) == '\'';
     }
     
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   MAIN TOOLS END    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
     private static boolean literalStringIsString(String varName) {
         return varName.strip().matches("\"[^\"]*\"");
+    }
+    
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   MAIN TOOLS  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    private boolean isBackwardsCurlyBraces(String line) throws SyntaxException {
+        if (!line.contains("}")) return false;
+        if (!(line.strip().equals("}"))) {
+            throw new SyntaxException(String.format
+                    ("Backwards Curl must be singular in a line,Error in line:\"%s\"", line));
+        }
+        // line is in format \s*}\s* :
+        if (memoryManager.isOuterScope())
+            throw new SyntaxException("Backwards Curl must not be at the outer scope");
+        //in case of func, previous line must be return, so
+        if (!lastLineWasReturn && memoryManager.isFunctionScope())
+            throw new SyntaxException("in Method Backwards Curl must follow a \"return;\" line");
+        // in case of exiting if/while or function (after return) closing braces:
+        if (memoryManager.isFunctionScope())
+            memoryManager.unInitializeGlobals(uninitializedGlobals);
+        
+        memoryManager.decreaseScopeDepth();
+        return true;
     }
     
     /**
@@ -181,33 +194,15 @@ class LineProcessor {
                 isBackwardsCurlyBraces(line) ||
                 (!memoryManager.isOuterScope() &&
                         (isVarAssignmentLineLegit(line) || isVarDecLineValid(line))) ||
-                (isCommentLine(line) ||
-                        isEmptyLine(line));
-        
+                (isCommentLine(line) || isEmptyLine(line));
         
         lastLineWasReturn = isReturnLine(line); // !must not happen before isBackwardsCurlyBraces()!
         return isValid || lastLineWasReturn;
     }
     
-    private boolean isBackwardsCurlyBraces(String line) throws SyntaxException {
-        if (!line.contains("}")) return false;
-        if (!(line.strip().equals("}"))) {
-            throw new SyntaxException(String.format
-                    ("Backwards Curl must be singular in a line,Error in line:\"%s\"", line));
-        }
-        // line is in format \s*}\s* :
-        if (memoryManager.isOuterScope())
-            throw new SyntaxException("Backwards Curl must not be at the outer scope");
-        //in case of func, previous line must be return, so
-        if (!lastLineWasReturn && memoryManager.isFunctionScope())
-            throw new SyntaxException("in Method Backwards Curl must follow a \"return;\" line");
-        // in case of exiting if/while or function (after return) closing braces:
-        if (memoryManager.isFunctionScope())
-            memoryManager.unInitializeGlobals(uninitializedGlobals);
-        
-        memoryManager.decreaseScopeDepth();
-        return true;
-    }
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   MAIN TOOLS END    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     
     /**
      * get a string and verify that the value it hold is boolean
@@ -215,18 +210,32 @@ class LineProcessor {
      * @param s the input string
      * @return true if boolean expression. else false.
      */
-    private boolean verifyBoolean(String s) {
-        String boolExpression = "^\\s*(true|false|[+-]*\\d+\\.\\d*|\\w[\\w\\d_]*|_[\\w\\d_]+)" +
-                "(\\s*(&&|\\|\\|)\\s*.*)$";
-        // with groups:0-all, 1-one of *_REGEX_EXPRESSION, 2-&& or || following by REGEX_EXPRESSION unlimited times
+    private boolean verifyBoolean(String s) throws SyntaxException {
+        String boolExpression = "^\\s*((true|false)|([+-]*\\d+\\.\\d*)|(\\w[\\w\\d_]*)|" +
+                "(_[\\w\\d_]+))(\\s*(&&|\\|\\|)\\s*.*)$";
         Matcher m = Pattern.compile(boolExpression).matcher(s);
-        if (!m.find()) return false;
-        literalStringIsBoolean(m.group(1));
-        // sure that if its var, it's of bool/int/double and is
-        if (m.group(2) == null) return true;
-        String[] expressions = m.group(2).strip().split("(&&|\\|\\|)");
+        if (!m.find() || m.group(1) == null) return false;
+        
+        //ex:true false or 54.3
+        boolean firstPartIsBooleanLiteral = (m.group(2) != null || m.group(3) != null);
+        if (!firstPartIsBooleanLiteral) {
+            var v = m.group(4) == null ?
+                    memoryManager.getVarAttributes(m.group(4)) :
+                    memoryManager.getVarAttributes(m.group(5));
+            if (v == null)
+                throw new SyntaxException(ERR_FUNC_WHILE_OR_IF + ERR_MGS_UNKNOWN_VARIABLE);
+            var t = v.getVariableType();
+            if (!(t.equals(VarType.BOOLEAN) || t.equals(VarType.INT) || t.equals(VarType.DOUBLE)))
+                throw new SyntaxException(ERR_FUNC_WHILE_OR_IF + ERR_MGS_UNKNOWN_VARIABLE);
+        }
+        
+        if (m.group(6) == null) return true;
+        String[] expressions = m.group(6).strip().split("(&&|\\|\\|)");
+        if (expressions.length == 0)
+            throw new SyntaxException(ERR_FUNC_WHILE_OR_IF + "extra && or || in boolean expression");
         for (int i = 1; i < expressions.length; i++)
-            if (!literalStringIsBoolean(expressions[i].strip())) return false;
+            if (!literalStringIsBoolean(expressions[i].strip()))
+                throw new SyntaxException(ERR_FUNC_WHILE_OR_IF + ERR_MGS_UNKNOWN_VARIABLE);
         return true;
     }
     
@@ -267,8 +276,8 @@ class LineProcessor {
             return true; //empty
         if (varNames.length != paramType.size())
             throw new InvalidParameterException(String.format("in " +
-                    "parametersMatchRequiredVariableTypes,\n Wrong " +
-                    "number Of variables used in function call \"%s(%s)\"", funcName,
+                            "parametersMatchRequiredVariableTypes,\n Wrong " +
+                            "number Of variables used in function call \"%s(%s)\"", funcName,
                     group));
         for (int i = 0; i < paramType.size(); i++) {
             var v = paramType.get(i);
@@ -287,12 +296,11 @@ class LineProcessor {
                 }
             } catch (NullPointerException exception) {
                 throw new SyntaxException(String.format("At parametersMatchRequiredVariableTypes, " +
-                        "mismatching parameters while calling function: \"%s\"",funcName));
+                        "mismatching parameters while calling function: \"%s\"", funcName));
             }
         }
         return true;
     }
-    
     
     private boolean isReturnLine(String line) throws SyntaxException {
         if (!line.contains(" return")) return false;
@@ -300,70 +308,6 @@ class LineProcessor {
         if (matcher.find())
             return true;
         throw new SyntaxException(String.format("in Method isReturnLine:\"%s\"", line));
-    }
-
-//    /**
-//     * if a function was found, enters a function after increasing scope depth and saving the
-//     * arguments there
-//     *
-//     * @param line the line
-//     * @return true if it's a function declaration
-//     * @throws SyntaxException if something went wrong
-//     */
-//    private boolean LegitFunctionDeclaration2rdIteration(String line) throws SyntaxException {
-//        Matcher m = METHOD_DEC_REGEX.matcher(line);
-//        // if match not found
-//        if (!m.find() || m.group(1) == null) return false;
-//        if (!memoryManager.isOuterScope()) throw new SyntaxException(String.
-//                format("Method Declaration In Inner Scope Error: \"%s\"", line));
-//        if (!functionManager.doesFunctionExist(m.group(2))) throw new SyntaxException(String.
-//                format("Unknown Method Error: \"%s\"", line));
-//        memoryManager.increaseScopeDepth();
-//
-//        if (m.group(3).equals("")) {
-//            return true;
-//        }
-//        // check legit of function inputs(in case there is input)
-//        String[] type_Variable = m.group(3).split(",");
-//
-//        Pattern patNameCompile = Pattern.compile(VAR_REGEX_EXPRESSION);
-//        for (String s : type_Variable) {
-//            // declare final stuff?
-//            String[] splitInto = s.strip().split(" ");
-//            if (splitInto.length > 2) throw new SyntaxException(
-//                    String.format("%s is not a valid pair of (type ,var_name)", s));
-//
-//            s = s.strip();
-//            String sType = s.split(" ")[0].strip(), sVarName = s.split(" ")[1].strip();
-//
-//            memoryManager.declareVariable(new VariableAttributes
-//                    (sVarName, false, VarType.getVarType(sType), true));
-//        }
-//
-//        return true;
-//    }
-    
-    // todo how come its not used (asking  myself)
-    
-    /**
-     * get an expression and verify that the value it hold is boolean
-     *
-     * @param expression the input string
-     * @return true if boolean expression. Else false
-     */
-    private boolean verifyBooleanExpression(String expression) {
-        String boolExpression = "^\\s*(true|false|[+-]*\\d+\\.\\d*|\\w[\\w\\d_]*|_[\\w\\d_]+)" +
-                "(\\s*(&&|\\|\\|)\\s*.*)$";
-        // with groups:0-all, 1-one of *_REGEX_EXPRESSION, 2-&& or || following by REGEX_EXPRESSION unlimited times
-        Matcher m = Pattern.compile(boolExpression).matcher(expression);
-        if (!m.find()) return false;
-        literalStringIsBoolean(m.group(1));
-        // sure that if its var, it's of bool/int/double and is
-        if (m.group(2) == null) return true;
-        String[] expressions = m.group(2).strip().split("(&&|\\|\\|)");
-        for (int i = 1; i < expressions.length; i++)
-            if (!literalStringIsBoolean(expressions[i].strip())) return false;
-        return true;
     }
     
     /**
@@ -523,15 +467,6 @@ class LineProcessor {
         return m.group(1).strip();
     }
     
-    
-    private void addGlobalVariable(VariableAttributes attributes) throws SyntaxException {
-        if (!memoryManager.isOuterScope())
-            return;
-        if (attributes.isFinal() && !attributes.isInitialized())
-            throw new SyntaxException("final variable is not initialized");
-        memoryManager.declareVariable(attributes);
-    }
-    
     private void addFunctionArgument(VariableAttributes attributes) {
         //function arguments are always initialized
         memoryManager.declareVariable(new VariableAttributes(
@@ -540,13 +475,6 @@ class LineProcessor {
                 attributes.getVariableType(),
                 true));
     }
-    
-    private void addLocalVariable(VariableAttributes variableAttributes) {
-        if (!memoryManager.isOuterScope()) {
-            memoryManager.declareVariable(variableAttributes);
-        }
-    }
-    
     
     /**
      * read a function declaration line: make sure that
@@ -596,17 +524,94 @@ class LineProcessor {
         return true;
     }
     
-    private boolean isWhileOrIf(String line) {
+    private boolean isWhileOrIf(String line) throws SyntaxException {
         // regex for "if"\"while" then "(" then something that should be boolean expression, then ){
         String WhileIfRegex = "^\\s*(while|if)\\s*\\((.*)\\)\\s*\\{\\s*$";
         Matcher matcher = Pattern.compile(WhileIfRegex).matcher(line);
         if (!matcher.find() || matcher.group(1) == null) return false;
-        verifyBoolean(matcher.group(2).strip());
+        if (!verifyBoolean(matcher.group(2).strip())) {
+            throw new SyntaxException("in isWhileOrIf, expression is not ai boolean expression");
+        }
         memoryManager.increaseScopeDepth(); // upon entering a new scope.
         return true;
     }
     
+    private void addGlobalVariable(VariableAttributes attributes) throws SyntaxException {
+        if (!memoryManager.isOuterScope())
+            return;
+        if (attributes.isFinal() && !attributes.isInitialized())
+            throw new SyntaxException("final variable is not initialized");
+        memoryManager.declareVariable(attributes);
+    }
     
+    private void addLocalVariable(VariableAttributes variableAttributes) {
+        if (!memoryManager.isOuterScope()) {
+            memoryManager.declareVariable(variableAttributes);
+        }
+    }
+    
+    /**
+     * get an expression and verify that the value it hold is boolean
+     *
+     * @param expression the input string
+     * @return true if boolean expression. Else false
+     */
+    private boolean verifyBooleanExpression(String expression) {
+        String boolExpression = "^\\s*(true|false|[+-]*\\d+\\.\\d*|\\w[\\w\\d_]*|_[\\w\\d_]+)" +
+                "(\\s*(&&|\\|\\|)\\s*.*)$";
+        // with groups:0-all, 1-one of *_REGEX_EXPRESSION, 2-&& or || following by REGEX_EXPRESSION unlimited times
+        Matcher m = Pattern.compile(boolExpression).matcher(expression);
+        if (!m.find()) return false;
+        literalStringIsBoolean(m.group(1));
+        // sure that if its var, it's of bool/int/double and is
+        if (m.group(2) == null) return true;
+        String[] expressions = m.group(2).strip().split("(&&|\\|\\|)");
+        for (int i = 1; i < expressions.length; i++)
+            if (!literalStringIsBoolean(expressions[i].strip())) return false;
+        return true;
+    }
+    //    /**
+//     * if a function was found, enters a function after increasing scope depth and saving the
+//     * arguments there
+//     *
+//     * @param line the line
+//     * @return true if it's a function declaration
+//     * @throws SyntaxException if something went wrong
+//     */
+//    private boolean LegitFunctionDeclaration2rdIteration(String line) throws SyntaxException {
+//        Matcher m = METHOD_DEC_REGEX.matcher(line);
+//        // if match not found
+//        if (!m.find() || m.group(1) == null) return false;
+//        if (!memoryManager.isOuterScope()) throw new SyntaxException(String.
+//                format("Method Declaration In Inner Scope Error: \"%s\"", line));
+//        if (!functionManager.doesFunctionExist(m.group(2))) throw new SyntaxException(String.
+//                format("Unknown Method Error: \"%s\"", line));
+//        memoryManager.increaseScopeDepth();
+//
+//        if (m.group(3).equals("")) {
+//            return true;
+//        }
+//        // check legit of function inputs(in case there is input)
+//        String[] type_Variable = m.group(3).split(",");
+//
+//        Pattern patNameCompile = Pattern.compile(VAR_REGEX_EXPRESSION);
+//        for (String s : type_Variable) {
+//            // declare final stuff?
+//            String[] splitInto = s.strip().split(" ");
+//            if (splitInto.length > 2) throw new SyntaxException(
+//                    String.format("%s is not a valid pair of (type ,var_name)", s));
+//
+//            s = s.strip();
+//            String sType = s.split(" ")[0].strip(), sVarName = s.split(" ")[1].strip();
+//
+//            memoryManager.declareVariable(new VariableAttributes
+//                    (sVarName, false, VarType.getVarType(sType), true));
+//        }
+//
+//        return true;
+//    }
+    
+    // todo how come its not used (asking  myself)
 }
     
 

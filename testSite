@@ -1,2 +1,7 @@
-int bor = 4;
-int fif, molkai, bari ;
+void func(final double x, boolean b){
+    int p = 3;
+    if(true &&){
+        int a;
+    }
+    return;
+}

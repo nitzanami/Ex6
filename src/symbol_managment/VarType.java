@@ -72,8 +72,7 @@ public enum VarType {
             return false;
         }
     }
-
-
+    
     /**
      * check if the given string is a valid double
      *
@@ -120,5 +119,4 @@ public enum VarType {
             return DOUBLE;
         return  null;
     }
-
 }
