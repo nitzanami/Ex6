@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
 
 class LineProcessor {
     // a predicate that handles empty lines
-    private final static String VAR_REGEX_EXPRESSION = "([a-zA-Z]\\w*|_\\w+)";
+    private final static String VAR_REGEX_EXPRESSION = "(\\w[\\w\\d_]*|_[\\w\\d_]+)";
     private final static String DOUBLE_REGEX_EXPRESSION = "^[+-]?\\d+(\\.\\d*)?$";
     private final static String[] keywords = {"while", "if", "final", "void", "true", "false", "return"};
     
@@ -191,7 +191,7 @@ class LineProcessor {
         
         boolean isValid = isEmptyLine(line) ||
                 isFuncDecValid(line, true) ||
-                isWhileOrIf(line) ||
+                isWhileOrIf(line, true) ||
                 isBackwardsCurlyBraces(line) ||
                 (!memoryManager.isOuterScope() || (isVarDecLineValid(line) ||
                         isVarAssignmentLineLegit(line)));
@@ -227,7 +227,7 @@ class LineProcessor {
     private boolean processLineSecondIteration(String line) throws SyntaxException {
         if (memoryManager.isOuterScope() && line.contains(";"))
             return true; //was checked 1st iteration
-        boolean isValid = isWhileOrIf(line) ||
+        boolean isValid = isWhileOrIf(line, false) ||
                 isFunctionCallLegit(line) ||
                 isFuncDecValid(line, false) ||
                 isBackwardsCurlyBraces(line) ||
@@ -426,7 +426,7 @@ class LineProcessor {
                 if (varAssignment.equals(""))
                     throw new IllegalVarDecException("Missing variable assignment between commas");
                 m = Pattern.compile("^" + VAR_REGEX_EXPRESSION +
-                        "\\s*=\\s* (\\S*|\"[^\"]*\")\\s*$").matcher(varAssignment);
+                        "\\s*=\\s*(\\S*|\"[^\"]*\")\\s*$").matcher(varAssignment);
                 if (!m.find())
                     throw new IllegalVarDecException("Illegal format for variable assignment: " + line);
                 String name = m.group(1);
@@ -602,6 +602,8 @@ class LineProcessor {
                 return true;
             }
             String[] argumentDeclarations = m.group(3).split(",");
+            if(argumentDeclarations.length <= countRemovedChars(m.group(3),","))
+                throw new SyntaxException("Wrong number of ',' in function declaration");
             for (String s : argumentDeclarations) {
                 isVarDecLegit(s, this::addFunctionArgument);
                 String varName = getVariableName(s.replaceFirst("(?:final\\s+)?\\s*" +
@@ -618,11 +620,15 @@ class LineProcessor {
          * @return does line starts with if or while, the (...){, with '...' a boolean expression
          * @throws SyntaxException in case of starting with if/while(...){ BUT not ... is not boolean ex
          */
-        private boolean isWhileOrIf (String line) throws SyntaxException {
+        private boolean isWhileOrIf (String line, boolean isFirstIteration) throws SyntaxException {
             // regex for "if"\"while" then "(" then something that should be boolean expression, then ){
             String WhileIfRegex = "^\\s*(while|if)\\s*\\((.*)\\)\\s*\\{\\s*$";
             Matcher matcher = Pattern.compile(WhileIfRegex).matcher(line);
             if (!matcher.find() || matcher.group(1) == null) return false;
+            if (isFirstIteration) {
+                memoryManager.increaseScopeDepth();
+                return true; // as parameters aren't updated yet
+            }
             if (!verifyBoolean(matcher.group(2).strip())) {
                 throw new SyntaxException("in isWhileOrIf, expression is not a boolean expression");
             }
