@@ -1,7 +1,6 @@
 package symbol_managment;
 
-import javax.lang.model.type.UnknownTypeException;
-import java.util.Locale;
+import exceptions.IllegalTypeException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
