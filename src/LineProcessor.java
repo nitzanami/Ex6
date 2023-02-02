@@ -256,6 +256,16 @@ class LineProcessor {
         return isVarDecLegit(line, memoryManager::declareVariable);
     }
     
+    /**
+     * for line formatted as word(...){
+     * where word!= if and word!=while, that
+     *      'word' is a known function name and
+     *      '...' hold the matching parameters for function 'word'
+     * @param line input
+     * @return false if not formatted as word(...), true if its a legit function call
+     * @throws SyntaxException in case of unknown function name, or '...' not aligns with the
+     * expected function parameter values
+     */
     private boolean isFunctionCallLegit(String line) throws SyntaxException {
         String format = "^\\s*(\\w[\\w\\d_]*)\\s*\\((.*)\\)\\s*;\\s*$";
         Matcher matcher = Pattern.compile(format).matcher(line);
@@ -266,6 +276,13 @@ class LineProcessor {
         return parametersMatchRequiredVariableTypes(matcher.group(2), funcName);
     }
     
+    /**
+     *
+     * @param group is the '...' in a line such as: "func(...){"
+     * @param funcName the name of the function
+     * @return true if '...' matches the parameters needed, false otherwise
+     * @throws SyntaxException the errors that might rise from miss-matching parameters
+     */
     private boolean parametersMatchRequiredVariableTypes(String group, String funcName) throws SyntaxException {
         ArrayList<VarType> paramType;
         try {
@@ -289,10 +306,11 @@ class LineProcessor {
             if ((v == VarType.INT || v == VarType.DOUBLE) && literalStringIsNumber(input)) continue;
             if (v == VarType.STRING && literalStringIsString(input)) continue;
             if (v == VarType.CHAR && literalStringIsChar(input)) continue;
-            // if not, if it's a known variable:
+            // if not, if it's a known variable (and initialized):
             try {
                 if (!DownCaster.firstAcceptsSecond
-                        (paramType.get(i), memoryManager.getVarAttributes(input).getVariableType())) {
+                        (paramType.get(i), memoryManager.getVarAttributes(input).getVariableType())
+                && memoryManager.getVarAttributes(input).isInitialized()) {
                     throw new InvalidParameterException(String.format("Wrong " +
                             "type Of variables in function call \"%s\" using\"%s\"", funcName, group));
                 }
@@ -502,6 +520,8 @@ class LineProcessor {
         String funcName = m.group(2);
         if (isFirstIteration && functionManager.doesFunctionExist(funcName))
             throw new SyntaxException("May not use the same name for different function. name: " + funcName);
+        if(!memoryManager.isOuterScope())
+            throw new SyntaxException("May declare a function only in outer scope. name: " + funcName);
         
         ArrayList<VarType> funcVariables = new ArrayList<>();
         
