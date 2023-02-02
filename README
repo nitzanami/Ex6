@@ -1,0 +1,89 @@
+neriya333
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+File description:
+    README          - this file
+
+    ~~~ logic files ~~~
+    main                - loads the program, runs LineProcessor on the file and reports the result
+    Status              - Enum for the program status.(VALID, SYNTAX, IOERROR)
+    LineProcessor       - iterate once to know the function names + params, init global variables.
+                          iterate again to make sure that the s-java was written fine.
+    FunctionManager     - The class that manages function calls. remember which functions are known
+                          and what VarTypes each function accepts.
+    MemoryManager       - Manages Scopes for variable declaration and uses.
+    VarType             - an Enum for the legit types. currently: boolean,char,int,double,String
+    DownCaster          - A single method class used to compare VarTypes,
+                          with double accepts int, boolean accepts double and int.
+    VariableAttributes  - Hold the information about a variable. (name, is it initialized, etc.)
+
+    ~~~ Exception files ~~~
+    illegalTypeException
+    illegalVarDecException
+    MissingSemicolonException
+
+    ~~~ tests ~~~
+    boolean_test
+    boolean_test_2
+    boolean_test_3
+    char_test
+    char_test2
+    curly_balancing
+    curly_balancing_2
+    curly_balancing_3
+    double_test
+    empty_line_after_curly
+    final_initialize_test
+    final_parameter
+    final_var_in_function
+    return_test
+    scope_test
+    semicolon
+    string_test
+    uninitialized_test
+    valid_test
+    valid_test_2
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  Design ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Assuming iteration over the text only once:
+    Issue 1: how would we know what function call is legit? maybe it's initialized later, maybe not?
+    Issue 2: how would we know what variable is global? maybe it's declare later, maybe not?
+
+Therefore we decided to iterate twice over the file. first to solve the issues mentioned above
+then to check the validity of the rest of the code.
+That's how FunctionManager and MemoryManager as solution to Issue 1 and 2, respectively,came to life
+
+!FunctionManager! begged the question - how would we contain the knowledge of which function
+receives which parameter type? that birthed the Enum !VarType!, and that with the ds:
+Map<String functionName, List<VarType>>.
+now given the function declaration "void foo(T x, Z y, P p){" we saved the pair (foo,[T,Z,P]) in the
+ map, and given a function call "foo(x, y)" we compared the VarTypes sent to the function with those
+  we saved in our in the map for the key "foo".
+
+!MemoryManager! begged the question - how would we make a scope-like memory, and what would it hold?
+That was solved easily using a List - at 0 index the global variables, and each '{' adds depth-scope
+to the list. what would the list hold?
+for that we made !VariableAttribute! that holds for a variable name(key in a given scope) more
+information like, is final, is initialized, and more along with useful functionality
+
+
+// to delete
+o Design: in this section, you should document all design issues and decisions you have made (not
+including those that were provided by us of course). You should briefly describe the design (what are
+the classes, what are their relationships, etc.). When using inheritance, you should describe the
+inheritance hierarchy. Finally, but most importantly, you should briefly explain why you have made
+the various design choices, and which others you have considered.
+
+o Implementation issues: this section should contain all important comments about implementation
+issues that you think would help understand your code or should be pointed out since they are
+important in some sense.
+
+o Answers to questions: in this section, you will answer the questions you were asked to answer in the
+README file.
+
+o If an exercise explicitly states a change from this format, you should follow the guidelines within
+the exercise!
+
+● Source files: Each source file should be well documented according to the coding style guide.
+
