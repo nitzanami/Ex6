@@ -1,3 +1,7 @@
+import exceptions.IllegalTypeException;
+import exceptions.IllegalVarDecException;
+import exceptions.MissingSemicolonException;
+import exceptions.SyntaxException;
 import symbol_managment.*;
 
 import java.io.BufferedReader;

@@ -1,5 +1,7 @@
+package exceptions;
+
 public class SyntaxException extends Exception{
-    SyntaxException(String message){
+    public SyntaxException(String message){
         super(message);
     }
 }

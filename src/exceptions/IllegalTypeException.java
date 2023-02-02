@@ -1,4 +1,4 @@
-package symbol_managment;
+package exceptions;
 
 import javax.lang.model.UnknownEntityException;
 

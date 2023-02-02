@@ -2,6 +2,8 @@
  * Writen by
  */
 
+import exceptions.SyntaxException;
+
 import java.io.IOException;
 
 public class Main {

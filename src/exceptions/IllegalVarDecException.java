@@ -1,4 +1,4 @@
-import java.util.IllegalFormatException;
+package exceptions;
 
 public class IllegalVarDecException extends IllegalArgumentException {
     public IllegalVarDecException(String s) {
