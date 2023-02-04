@@ -1,0 +1,97 @@
+nitzanamihai
+neriya333
+
+File description:
+
+    ~~~ logic files ~~~
+    oop.ex6.main.Sjavac      - loads the program, runs oop.ex6.parsing.LineProcessor on the file and reports the result
+    oop.ex6.main.Status      - Enum for the program status.(VALID, SYNTAX, IOERROR)
+    oop.ex6.parsing.LineProcessor       - iterate once to know the function names + params, init global variables.
+                          iterate again to make sure that the s-java was written fine.
+    oop.ex6.symbol_management.FunctionManager     - The class that manages function calls.
+                                                    remember which functions are known
+                                                    and what parameters each function accepts.
+    oop.ex6.symbol_management.MemoryManager     - Manages Scopes for variable declaration and uses.
+    oop.ex6.symbol_management.VarType           - an Enum for the legal types. currently: boolean,char,int,double,String.
+                                                  also used to get the type of a given string literal.
+    VariableAttributes  - Hold information about a variable. (name, is it initialized, etc.)
+
+    ~~~ Exception files ~~~
+    SyntaxException - the main exception which all other exceptions in the project extend. The only public exception
+
+    exceptions in oop.ex6.parsing:
+    BackwardsCurlyException - for invalid use of closing curly braces
+    IllegalFuncCallException - for errors in calling functions
+    IllegalFuncDecException - for errors in function declarations
+    IllegalVarDecException - for errors in variable declarations
+    InvalidBooleanException - for errors in evaluating boolean expression
+    InvalidCommentException - for invalid comment lines
+    MissingSemicolonException - self explanatory
+    UninitializedVarException - when trying to access a var that isn't initiated
+    UnknownIdentifierException - when trying to use an unknown identifier
+
+    exceptions in oop.ex6.symbol_management:
+    AlreadyDefinedException - when trying to define a variable or function that is already defined
+    IllegalTypeException - when attempting to convert a string to a VarType, if the conversion fails.
+    NoSuchFunctionException - when trying to call a function that doesnt exist
+
+
+    ~~~ tests ~~~
+    boolean_test - basic test of boolean vars
+    boolean_test_2 - testing extra && signs after boolean expression
+    boolean_test_3 - testing extra && signs before boolean expression
+    char_test - checks all valid chars
+    char_test2 - checks a char with 2 letters in it
+    curly_balancing - check for extra } 
+    curly_balancing_2 - check for missing }
+    curly_balancing_3 - check for extra {
+    double_test - test legal double values
+    empty_line_after_curly - check for validity of empty lines after a {
+    final_initialize_test - check for enforcing final variable initialization
+    final_parameter - test final variable reassignement
+    final_var_in_function - another test for reassignement of finals
+    return_test - check for return at end of function
+    scope_test - make sure variables get out of scope
+    semicolon - test for 2 semicolons at the same lines
+    string_test - test for spaces in strings
+    uninitialized_globals - make sure that vars are initialized
+    valid_test - general test that should not fail
+    valid_test_2 - another test that should not fail
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  Design ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Assuming iteration over the text only once:
+    Issue 1: how would we know what function call is valid? maybe it's initialized later, maybe not?
+    Issue 2: how would we know what variable is global? maybe it's declare later, maybe not?
+    Issue 3: how do we keep track of which variables are in scope.
+Therefore we decided to iterate twice over the file. first to solve the issues mentioned above
+then to check the validity of the rest of the code.
+That's how FunctionManager and MemoryManager as solution to Issue 1 and 2, respectively,came to life
+
+!FunctionManager! begged the question - how would we contain the knowledge of which function
+receives which parameter type? that birthed the Enum !VarType!, and that with the data structure:
+Map<String functionName, List<VarType>>.
+now given the function declaration "void foo(T x, Z y, P p){" we saved the pair (foo,[T,Z,P]) in the
+ map, and given a function call "foo(x, y)" we compared the VarTypes sent to the function with those
+  we saved in our in the map for the key "foo".
+
+!MemoryManager! begged the question - how would we make a scope-like memory, and what would it hold?
+That was solved easily using a List - at 0 index the global variables, and each '{' adds depth-scope
+to the list. what would the list hold?
+for that we made !VariableAttribute! that holds for a variable name(key in a given scope) more
+information like, is final, is initialized, and more along with useful functionality
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  Error handling  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+We used various exception classes that all extend the main class- SyntaxException.
+when we encounter invalid syntax, we throw an exception, and the loop that iterates over the lines
+catches that exception, prints an error message, and returns a fail status.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  RegEx  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+We used the regex "^\\s*(final\\s+)?(\\b\\S*\\b)(.*?)$" to find variable declarations, and also
+check if they are final, and get their type.
+
+We used the regex "^\s*(\w[\w\d_]*)\s*\((.*)\)\s*;\s*$" to find function calls by looking for
+a valid identifier, and after it a pair of brackets with parameters inside them, we used "(.*)"
+for the parameters because we have other functions that parse the parameter list.

@@ -1,2 +1,0 @@
-char c = 'ab';
-//should fail because this is an illegal char

@@ -1,2 +1,0 @@
-final int a = 135, b;
-//should fail because b is not initialized.

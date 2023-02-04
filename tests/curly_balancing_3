@@ -1,6 +1,0 @@
-void func(){
-    {
-    if(true){
-        int a;
-    }
-}

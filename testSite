@@ -1,12 +1,9 @@
-    int p = 3;
-void func(final double x ,boolean b){
-    int hh = 0;
-    if(hh  && h){
-        int a = 4;
-    }
-    int c=3;
-    func(123,c );
-    func(123,true);
-    func(123,p);
-    return;
+int a;
+void foo(){
+a = 7;
+return;
+}
+void boo(){
+int b = a;
+return;
 }

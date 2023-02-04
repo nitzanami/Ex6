@@ -1,8 +1,0 @@
-int a = 124;
-
-void foo(final int a){
-    a = 121;
-    return;
-}
-
-//should fail because of final variable reassigned.
