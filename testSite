@@ -1,7 +1,12 @@
-void func(final double x, boolean b){
     int p = 3;
-    if(true &&){
-        int a;
+void func(final double x ,boolean b){
+    int hh = 0;
+    if(hh  && h){
+        int a = 4;
     }
+    int c=3;
+    func(123,c );
+    func(123,true);
+    func(123,p);
     return;
 }

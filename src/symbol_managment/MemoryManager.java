@@ -1,5 +1,7 @@
 package symbol_managment;
 
+import exceptions.IllegalVarDecException;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -53,9 +55,9 @@ public class MemoryManager {
      *
      * @param variableAttributes The variable that we want to declare.
      */
-    public void declareVariable(VariableAttributes variableAttributes) { // todo rename addAttribute?
+    public void declareVariable(VariableAttributes variableAttributes) {
         if (!declarable(variableAttributes.getName()))
-            throw new IllegalCallerException("The variable " + variableAttributes.getName() +
+            throw new IllegalVarDecException("The variable " + variableAttributes.getName() +
                     " is already defined in this scope");
         memoryScopes.get(memoryScopes.size() - 1).put(variableAttributes.getName(), variableAttributes);
     }

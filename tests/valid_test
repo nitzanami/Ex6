@@ -1,9 +1,9 @@
 int a;
 final String str = "hi this is a test";
 
-void foo(int num, final char c){
-    if(c > num){
-        foo2(c);
+void foo(int num, final double c){
+    if(c || num){
+        foo2('c');
         num = 20, a = 15;
         num = a;
     }
@@ -13,5 +13,10 @@ void foo(int num, final char c){
 
 void foo2(final char c1){
     char c = c1, b = c1, a = c1;
+    return;
+}
+
+void function(double d, int i, char c, String s, boolean b){
+    function(-135.131, 1351, '4', "sdasgad",.135);
     return;
 }

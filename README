@@ -5,14 +5,14 @@ File description:
     README          - this file
 
     ~~~ logic files ~~~
-    main                - loads the program, runs LineProcessor on the file and reports the result
+    Main                - loads the program, runs LineProcessor on the file and reports the result
     Status              - Enum for the program status.(VALID, SYNTAX, IOERROR)
     LineProcessor       - iterate once to know the function names + params, init global variables.
                           iterate again to make sure that the s-java was written fine.
     FunctionManager     - The class that manages function calls. remember which functions are known
                           and what VarTypes each function accepts.
     MemoryManager       - Manages Scopes for variable declaration and uses.
-    VarType             - an Enum for the legit types. currently: boolean,char,int,double,String
+    VarType             - an Enum for the legal types. currently: boolean,char,int,double,String
     DownCaster          - A single method class used to compare VarTypes,
                           with double accepts int, boolean accepts double and int.
     VariableAttributes  - Hold the information about a variable. (name, is it initialized, etc.)

@@ -2,7 +2,6 @@ package symbol_managment;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 
 public class FunctionManager {
     private final HashMap<String, ArrayList<VarType>> functionToInputMapping;
@@ -17,11 +16,11 @@ public class FunctionManager {
      * @param functionName the function name
      * @return the parameters
      */
-    public ArrayList<VarType> getParameterTypes(String functionName) throws NoSuchMethodException {
+    public ArrayList<VarType> getParameterTypes(String functionName) throws NoSuchFunctionException {
         if (doesFunctionExist(functionName)) {
             return functionToInputMapping.get(functionName);
         }
-        throw new NoSuchMethodException(String.format("%s Method Not Found", functionName));
+        throw new NoSuchFunctionException(String.format("%s Method Not Found", functionName));
     }
     
     /**
@@ -45,25 +44,5 @@ public class FunctionManager {
         if (!doesFunctionExist(functionName))
             functionToInputMapping.put(functionName, parameterTypes);
         else throw new RuntimeException(String.format("overloading of %s was found", functionName));
-    }
-    
-    /**
-     * @param funcName               give a func name and
-     * @param parameteresGivenToFunc a list of the VarType it takes as args
-     * @return is that function call legit
-     */
-    public boolean isLegitCall(String funcName, List<VarType> parameteresGivenToFunc) {
-        try {
-            List<VarType> funcParameters = getParameterTypes(funcName);
-            if (funcParameters.size() != parameteresGivenToFunc.size()) return false;
-            for (int i = 0; i < funcParameters.size(); i++) {
-                if (!DownCaster.firstAcceptsSecond(funcParameters.get(i), parameteresGivenToFunc.get(i)))
-                    return false;
-            }
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace(); // todo
-            return false;
-        }
-        return true;
     }
 }

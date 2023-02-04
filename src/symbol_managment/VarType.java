@@ -1,6 +1,7 @@
 package symbol_managment;
 
 import exceptions.IllegalTypeException;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -71,7 +72,7 @@ public enum VarType {
             return false;
         }
     }
-    
+
     /**
      * check if the given string is a valid double
      *
@@ -116,6 +117,19 @@ public enum VarType {
             return STRING;
         if (isDouble(value))
             return DOUBLE;
-        return  null;
+        return null;
+    }
+
+    /**
+     * @param A Vartype
+     * @param B Vartype
+     * @return if "A = B;" is ok
+     */
+    public static boolean firstAcceptsSecond(VarType A, VarType B) {
+        if (A == B) return true;
+        if (B == null) return false;
+        if (A == VarType.BOOLEAN) return B == VarType.INT || B == VarType.DOUBLE;
+        if (A == VarType.DOUBLE) return B == VarType.INT;
+        return false;
     }
 }
